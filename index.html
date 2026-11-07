@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=1">
+<link rel="manifest" href="manifest.json?v=2">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <div class="app">
@@ -43,12 +43,10 @@
       <section class="section active" id="section-home">
         <div class="page-head"><h2>Home</h2><p>Aaj ka hisaab — collection, attendance aur due, ek nazar me.</p></div>
         <div class="dark-band">
-          <div class="grid-4">
-            <div class="stat"><div class="label">Collected Today</div><div class="value" id="statCollected">₹0</div><div class="hint">Today's payments</div></div>
-            <div class="stat"><div class="label">Present Today</div><div class="value" id="statPresent">0 / 0</div><div class="hint">Members present today</div></div>
-            <div class="stat"><div class="label">Active Members</div><div class="value" id="statActive">0</div><div class="hint">Currently active</div></div>
-            <div class="stat"><div class="label">Total Due</div><div class="value" id="statDue">₹0</div><div class="hint">All unpaid fees</div></div>
-          </div>
+          <div class="stat"><div class="label">Collected Today</div><div class="value" id="statCollected">₹0</div><div class="hint">Today's payments</div></div>
+          <div class="stat"><div class="label">Present Today</div><div class="value" id="statPresent">0 / 0</div><div class="hint">Members present today</div></div>
+          <div class="stat"><div class="label">Active Members</div><div class="value" id="statActive">0</div><div class="hint">Currently active</div></div>
+          <div class="stat"><div class="label">Total Due</div><div class="value" id="statDue">₹0</div><div class="hint">All unpaid fees</div></div>
         </div>
         <div class="grid-2">
           <div class="card"><h3>Needs Attention</h3><div id="attentionList"></div></div>
@@ -259,9 +257,9 @@
   </div>
 </div>
 
-<script src="config.js?v=1"></script>
-<script src="data.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<script src="config.js?v=2"></script>
+<script src="data.js?v=2"></script>
+<script src="app.js?v=2"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

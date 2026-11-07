@@ -4,8 +4,8 @@
  * Strategy: network-first for HTML/JS (fresh code always wins, cache is
  * only the offline fallback); cache-first for CSS/icons/manifest/fonts.
  */
-var CACHE = "gym-app-v1";
-var FILES = ["./", "./index.html?v=1", "./styles.css?v=1", "./config.js?v=1", "./data.js?v=1", "./app.js?v=1", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
+var CACHE = "gym-app-v2";
+var FILES = ["./", "./index.html?v=2", "./styles.css?v=2", "./config.js?v=2", "./data.js?v=2", "./app.js?v=2", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
 
 self.addEventListener("install", function (e) {
   // Add files one by one: a single missing file (e.g. PNG icons not yet
