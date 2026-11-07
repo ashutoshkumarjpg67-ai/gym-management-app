@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=9">
+<link rel="manifest" href="manifest.json?v=10">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <!-- ============ AUTH SCREEN (v1.4) — login se pehle sirf ye dikhta hai ============ -->
@@ -195,6 +195,8 @@
             <div><label>Weight (kg)</label><input name="weight" type="number" min="1" step="0.1" placeholder="e.g. 70"></div>
             <div><label>Goal</label><input name="goal" placeholder="e.g. Weight loss / Muscle gain"></div>
             <div><label>Trainer</label><select name="trainerId"><option value="">No Trainer</option></select></div>
+            <div><label>Plan</label><select name="planId"><option value="">No Plan</option></select></div>
+            <div class="full"><p class="muted" id="planHint" hidden>No plans yet — create one in More → Plans, then pick it here to add the fee.</p></div>
             <div><label>Join Date</label><input name="joinDate" id="joinDateField" type="date"></div>
             <div class="full"><button class="btn" type="submit">Save Member</button> <button class="btn ghost" type="button" id="memberCancel">Cancel</button></div>
           </form>
@@ -378,10 +380,10 @@
   </div>
 </div>
 
-<script src="config.js?v=9"></script>
-<script src="auth.js?v=9"></script>
-<script src="data.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="config.js?v=10"></script>
+<script src="auth.js?v=10"></script>
+<script src="data.js?v=10"></script>
+<script src="app.js?v=10"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

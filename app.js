@@ -523,6 +523,18 @@
     if (keep) sel.value = keep;
   }
 
+  function fillMemberFormPlans() {
+    var sel = $("memberForm") ? $("memberForm").elements["planId"] : null;
+    if (!sel) return;
+    var keep = sel.value;
+    sel.innerHTML = "";
+    var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "No Plan"; sel.appendChild(o0);
+    D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
+    if (keep) sel.value = keep;
+    var hint = $("planHint");
+    if (hint) hint.hidden = D.plansList().length > 0;
+  }
+
   function openMember(id) {
     var m = D.memberById(id);
     if (!m) return;
@@ -579,6 +591,7 @@
     var m = D.memberById(currentMemberId);
     if (!m) return;
     fillMemberFormTrainers();
+    fillMemberFormPlans();
     var f = $("memberForm");
     if (!f) return;
     f.elements["name"].value = m.name || "";
@@ -589,6 +602,8 @@
     f.elements["goal"].value = m.goal || "";
     f.elements["trainerId"].value = m.trainerId || "";
     f.elements["joinDate"].value = m.joinDate || D.todayStr();
+    var ap0 = D.activePlanFor(m.id);
+    if (ap0 && f.elements["planId"]) f.elements["planId"].value = ap0.planId;
     setText("memberFormTitle", "Edit Member");
     if ($("memberIdField")) $("memberIdField").value = m.id;
     pendingPhoto = m.photo || null;
@@ -700,6 +715,7 @@
 
   on("newMemberBtn", "click", function () {
     fillMemberFormTrainers();
+    fillMemberFormPlans();
     var f = $("memberForm");
     if (!f) return;
     f.reset();
@@ -763,7 +779,20 @@
         } else { D.removeMember(saved.id); return failQuotaSave(); }
       }
     }
+    // Admission/edit form mein plan chuna ho to use assign karo — tabhi fee
+    // record (Due) banta hai aur member defaulter list mein aata hai.
+    // Pehle se active plan ho to dobara assign mat karo (duplicate fee na bane).
+    var planMsg = "";
+    var chosenPlan = fv(f, "planId");
+    if (chosenPlan && saved) {
+      var targetId = id || saved.id;
+      if (targetId && !D.activePlanFor(targetId)) {
+        var pres = D.assignPlan(targetId, chosenPlan);
+        if (pres.ok) planMsg = "Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee record created (Due).";
+      }
+    }
     if (photoDropped) setText("memberMsg", "⚠️ Storage is almost full — member saved without photo. Take a backup from More → Data → Export, then delete old data to add the photo again.");
+    else if (planMsg) setText("memberMsg", planMsg);
     else setText("memberMsg", "");
     pendingPhoto = null;
     if ($("memberFormCard")) $("memberFormCard").hidden = true;
