@@ -504,7 +504,7 @@
     setHTML("memberRows", list.map(function (m) {
       var ap = D.activePlanFor(m.id);
       return "<tr data-member='" + m.id + "'><td>" + avatarHTML(m) + " " + esc(m.name) + "</td>" +
-        "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + esc(trainerName(m.trainerId)) + "</td>" +
+        "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + (m.joinDate ? D.fmtDate(m.joinDate) : "—") + "</td>" +
         "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
     }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Start by adding a member.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
     var rowsEl = $("memberRows");
