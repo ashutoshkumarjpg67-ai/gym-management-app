@@ -4,8 +4,8 @@
  * Strategy: network-first for HTML/JS (fresh code always wins, cache is
  * only the offline fallback); cache-first for CSS/icons/manifest/fonts.
  */
-var CACHE = "gym-app-v8";
-var FILES = ["./", "./index.html?v=8", "./styles.css?v=8", "./config.js?v=8", "./auth.js?v=8", "./data.js?v=8", "./app.js?v=8", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
+var CACHE = "gym-app-v9";
+var FILES = ["./", "./index.html?v=9", "./styles.css?v=9", "./config.js?v=9", "./auth.js?v=9", "./data.js?v=9", "./app.js?v=9", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
 
 self.addEventListener("install", function (e) {
   // Add files one by one: a single missing file (e.g. PNG icons not yet

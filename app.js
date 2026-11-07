@@ -689,6 +689,15 @@
     if (!pendingPhoto && e.target && e.target.name === "name") setPhotoPreview();
   });
 
+  // Join Date: kuch phones/PWA mein date field par tap karne se native
+  // calendar picker nahi khulta (field dikhta hai, par date badalti nahi).
+  // Isliye tap par showPicker() se picker zabardasti kholo — jahan native
+  // picker khud khul jata hai wahan ye call ignore/error hoti hai (catch).
+  on("joinDateField", "click", function () {
+    var el = $("joinDateField");
+    if (el && el.showPicker) { try { el.showPicker(); } catch (e) {} }
+  });
+
   on("newMemberBtn", "click", function () {
     fillMemberFormTrainers();
     var f = $("memberForm");
