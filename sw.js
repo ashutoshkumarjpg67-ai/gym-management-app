@@ -4,8 +4,8 @@
  * Strategy: network-first for HTML/JS (fresh code always wins, cache is
  * only the offline fallback); cache-first for CSS/icons/manifest/fonts.
  */
-var CACHE = "gym-app-v7";
-var FILES = ["./", "./index.html?v=7", "./styles.css?v=7", "./config.js?v=7", "./auth.js?v=7", "./data.js?v=7", "./app.js?v=7", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
+var CACHE = "gym-app-v8";
+var FILES = ["./", "./index.html?v=8", "./styles.css?v=8", "./config.js?v=8", "./auth.js?v=8", "./data.js?v=8", "./app.js?v=8", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./icon.svg", "./fonts/barlow-400.woff2", "./fonts/barlow-600.woff2", "./fonts/barlow-700.woff2", "./fonts/barlow-condensed-600.woff2", "./fonts/barlow-condensed-700.woff2"];
 
 self.addEventListener("install", function (e) {
   // Add files one by one: a single missing file (e.g. PNG icons not yet
@@ -24,7 +24,11 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   var url = e.request.url;
-  var isCode = url.indexOf(".html") !== -1 || url.indexOf(".js") !== -1;
+  // Navigation requests ("/" with no .html in the URL) MUST be network-first:
+  // the old cache-first branch served the stale app shell on every fresh
+  // open, so new versions only appeared after the new SW happened to install.
+  var isNav = e.request.mode === "navigate";
+  var isCode = isNav || url.indexOf(".html") !== -1 || url.indexOf(".js") !== -1;
   if (isCode) {
     // Network-first: fresh code on every visit when online.
     e.respondWith(
