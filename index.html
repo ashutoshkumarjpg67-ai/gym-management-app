@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=6">
+<link rel="manifest" href="manifest.json?v=7">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <!-- ============ AUTH SCREEN (v1.4) — login se pehle sirf ye dikhta hai ============ -->
@@ -17,70 +17,69 @@
     <div class="auth-brand">
       <img src="icon.svg" alt="Gym Management App logo">
       <h1>Gym Management App</h1>
-      <p>Har gym ka apna account — members, fees, attendance, ek jagah.</p>
     </div>
 
     <!-- LOGIN -->
     <form class="form auth-form" id="loginForm">
       <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
-      <div class="full"><label>Password *</label><div class="pw-wrap"><input type="password" id="loginPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Password"><button type="button" class="pw-eye" data-target="loginPassword" aria-label="Password dikhao ya chhupao">👁</button></div></div>
+      <div class="full"><label>Password *</label><div class="pw-wrap"><input type="password" id="loginPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Password"><button type="button" class="pw-eye" data-target="loginPassword" aria-label="Show or hide password">👁</button></div></div>
       <p class="auth-err full" id="loginErr" hidden></p>
       <div class="full"><button class="btn" type="submit">Login</button></div>
-      <p class="muted full auth-switch">Naya gym account banao? <button type="button" class="link-btn" id="toSignup">Sign up karo</button></p>
+      <p class="muted full auth-switch">Don't have a gym account? <button type="button" class="link-btn" id="toSignup">Sign up</button></p>
     </form>
 
     <!-- SIGNUP -->
     <form class="form auth-form" id="signupForm" hidden>
       <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
-      <div class="full"><label>Password *</label><input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Kam se kam 6 characters"></div>
-      <div class="full"><label>Confirm Password *</label><input type="password" id="signupConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Password dobara likho"></div>
+      <div class="full"><label>Password *</label><input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="At least 6 characters"></div>
+      <div class="full"><label>Confirm Password *</label><input type="password" id="signupConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Re-enter password"></div>
       <div class="full"><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
       <div class="full"><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
-      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner's name"></div>
       <div class="full photo-block">
         <label>Gym Logo (optional)</label>
         <div class="photo-picker">
           <div class="photo-preview" id="suLogoPreview"><span>?</span></div>
           <div class="photo-actions">
-            <button class="btn secondary" type="button" id="suLogoCameraBtn">📷 Logo lo</button>
-            <button class="btn secondary" type="button" id="suLogoGalleryBtn">🖼️ Gallery se chuno</button>
-            <button class="btn ghost" type="button" id="suLogoRemoveBtn" hidden>Hatao</button>
+            <button class="btn secondary" type="button" id="suLogoCameraBtn">📷 Take logo</button>
+            <button class="btn secondary" type="button" id="suLogoGalleryBtn">🖼️ Choose from gallery</button>
+            <button class="btn ghost" type="button" id="suLogoRemoveBtn" hidden>Remove</button>
           </div>
         </div>
         <input type="file" id="suLogoCameraInput" accept="image/*" capture="environment" hidden>
         <input type="file" id="suLogoGalleryInput" accept="image/*" hidden>
-        <p class="muted photo-status" id="suLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+        <p class="muted photo-status" id="suLogoStatus">Logo is auto-compressed on save (~50KB).</p>
       </div>
       <p class="auth-err full" id="signupErr" hidden></p>
-      <div class="full"><button class="btn" type="submit">Account banao</button></div>
-      <p class="muted full auth-switch">Pehle se account hai? <button type="button" class="link-btn" id="toLogin">Login karo</button></p>
+      <div class="full"><button class="btn" type="submit">Create account</button></div>
+      <p class="muted full auth-switch">Already have an account? <button type="button" class="link-btn" id="toLogin">Log in</button></p>
     </form>
 
     <!-- MIGRATION (purana data naye account me) -->
     <form class="form auth-form" id="migrateForm" hidden>
       <p class="muted full" id="migrateInfo"></p>
       <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
-      <div class="full"><label>Password *</label><input type="password" id="migratePassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Kam se kam 6 characters"></div>
-      <div class="full"><label>Confirm Password *</label><input type="password" id="migrateConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Password dobara likho"></div>
+      <div class="full"><label>Password *</label><input type="password" id="migratePassword" name="password" required minlength="6" autocomplete="new-password" placeholder="At least 6 characters"></div>
+      <div class="full"><label>Confirm Password *</label><input type="password" id="migrateConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Re-enter password"></div>
       <div class="full"><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
       <div class="full"><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
-      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner's name"></div>
       <div class="full photo-block">
         <label>Gym Logo (optional)</label>
         <div class="photo-picker">
           <div class="photo-preview" id="migLogoPreview"><span>?</span></div>
           <div class="photo-actions">
-            <button class="btn secondary" type="button" id="migLogoCameraBtn">📷 Logo lo</button>
-            <button class="btn secondary" type="button" id="migLogoGalleryBtn">🖼️ Gallery se chuno</button>
-            <button class="btn ghost" type="button" id="migLogoRemoveBtn" hidden>Hatao</button>
+            <button class="btn secondary" type="button" id="migLogoCameraBtn">📷 Take logo</button>
+            <button class="btn secondary" type="button" id="migLogoGalleryBtn">🖼️ Choose from gallery</button>
+            <button class="btn ghost" type="button" id="migLogoRemoveBtn" hidden>Remove</button>
           </div>
         </div>
         <input type="file" id="migLogoCameraInput" accept="image/*" capture="environment" hidden>
         <input type="file" id="migLogoGalleryInput" accept="image/*" hidden>
-        <p class="muted photo-status" id="migLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+        <p class="muted photo-status" id="migLogoStatus">Logo is auto-compressed on save (~50KB).</p>
       </div>
       <p class="auth-err full" id="migrateErr" hidden></p>
-      <div class="full"><button class="btn" type="submit">Account banao aur purana data lao</button></div>
+      <div class="full"><button class="btn" type="submit">Create account and bring old data</button></div>
     </form>
   </div>
 </div>
@@ -116,7 +115,7 @@
     <main class="content">
       <!-- ===== HOME ===== -->
       <section class="section active" id="section-home">
-        <div class="page-head"><h2>Home</h2><p>Aaj ka hisaab — collection, attendance aur due, ek nazar me.</p></div>
+        <div class="page-head"><h2>Home</h2><p>Today's summary — collection, attendance and dues at a glance.</p></div>
         <div class="dark-band">
           <div class="stat"><div class="label">Collected Today</div><div class="value" id="statCollected">₹0</div><div class="hint">Today's payments</div></div>
           <div class="stat"><div class="label">Present Today</div><div class="value" id="statPresent">0 / 0</div><div class="hint">Members present today</div></div>
@@ -131,9 +130,9 @@
 
       <!-- ===== MEMBERS ===== -->
       <section class="section" id="section-members">
-        <div class="page-head"><h2>Members</h2><p>Saare members ki list, search aur trainer filter. Naya member yahin se add karo.</p></div>
+        <div class="page-head"><h2>Members</h2><p>All members — search and filter by trainer. Add a new member here.</p></div>
         <div class="toolbar">
-          <input type="search" id="memberSearch" placeholder="Search name… / नाम खोजें">
+          <input type="search" id="memberSearch" placeholder="Search name…">
           <select id="memberTrainerFilter" aria-label="Trainer"><option value="All">All Trainers</option></select>
           <button class="btn" id="newMemberBtn">+ New Member</button>
         </div>
@@ -145,11 +144,11 @@
           <div class="grid-2">
             <div>
               <h3>Diet Plan</h3>
-              <textarea id="dietText" rows="4" placeholder="Diet plan likho…"></textarea>
+              <textarea id="dietText" rows="4" placeholder="Write the diet plan…"></textarea>
             </div>
             <div>
               <h3>Workout Plan</h3>
-              <textarea id="workoutText" rows="4" placeholder="Workout plan likho…"></textarea>
+              <textarea id="workoutText" rows="4" placeholder="Write the workout plan…"></textarea>
             </div>
           </div>
           <div class="toolbar"><button class="btn" id="saveExtrasBtn">Save Diet &amp; Workout</button></div>
@@ -180,14 +179,14 @@
               <div class="photo-picker">
                 <div class="photo-preview" id="photoPreview"><span id="photoPreviewText">?</span></div>
                 <div class="photo-actions">
-                  <button class="btn secondary" type="button" id="photoCameraBtn">📷 Photo lo</button>
-                  <button class="btn secondary" type="button" id="photoGalleryBtn">🖼️ Gallery se chuno</button>
-                  <button class="btn ghost" type="button" id="photoRemoveBtn" hidden>Hatao</button>
+                  <button class="btn secondary" type="button" id="photoCameraBtn">📷 Take photo</button>
+                  <button class="btn secondary" type="button" id="photoGalleryBtn">🖼️ Choose from gallery</button>
+                  <button class="btn ghost" type="button" id="photoRemoveBtn" hidden>Remove</button>
                 </div>
               </div>
               <input type="file" id="photoCameraInput" accept="image/*" capture="environment" hidden>
               <input type="file" id="photoGalleryInput" accept="image/*" hidden>
-              <p class="muted photo-status" id="photoStatus">Photo automatic compress hokar save hogi (~50KB), taaki phone storage na bhare.</p>
+              <p class="muted photo-status" id="photoStatus">Photo is auto-compressed on save (~50KB) so phone storage doesn't fill up.</p>
             </div>
             <div><label>Member Name *</label><input name="name" required placeholder="e.g. Rahul Kumar"></div>
             <div><label>Age</label><input name="age" type="number" min="1" placeholder="e.g. 22"></div>
@@ -204,7 +203,7 @@
 
       <!-- ===== FEES ===== -->
       <section class="section" id="section-fees">
-        <div class="page-head"><h2>Fees</h2><p>Fees ka hisaab — kitni bani, kitni jama, kitni baki. Payment yahin se lo, receipt bhi yahin milegi.</p></div>
+        <div class="page-head"><h2>Fees</h2><p>Fee summary — billed, collected and due. Collect payments and get receipts here.</p></div>
         <div class="grid-4">
           <div class="stat"><div class="label" id="feeBilledLabel">Billed (Nov 2026)</div><div class="value" id="feeBilled">₹0</div><div class="hint">All members</div></div>
           <div class="stat green"><div class="label">Collected</div><div class="value" id="feeCollected">₹0</div><div class="hint">Paid so far</div></div>
@@ -213,7 +212,7 @@
         </div>
         <div class="toolbar">
           <select id="feeMonthFilter" aria-label="Month"></select>
-          <input type="search" id="feeSearch" placeholder="Search member… / नाम खोजें">
+          <input type="search" id="feeSearch" placeholder="Search member…">
           <button class="btn" id="addFeeBtn">+ Add Fee</button>
         </div>
         <div class="card" id="addFeeCard" hidden>
@@ -247,11 +246,11 @@
 
       <!-- ===== ATTENDANCE ===== -->
       <section class="section" id="section-attendance">
-        <div class="page-head"><h2>Attendance</h2><p>Date chuno — phir Present / Absent mark karo aur Save karo.</p></div>
+        <div class="page-head"><h2>Attendance</h2><p>Pick a date — then mark Present / Absent and save.</p></div>
         <div class="card">
           <div class="toolbar">
             <input type="date" id="attDate">
-            <input type="search" id="attSearch" placeholder="Search member… / नाम खोजें">
+            <input type="search" id="attSearch" placeholder="Search member…">
             <button class="btn secondary" id="markAllBtn">Mark All Present</button>
             <button class="btn" id="saveAttBtn">Save Attendance</button>
           </div>
@@ -262,7 +261,7 @@
 
       <!-- ===== MORE ===== -->
       <section class="section" id="section-more">
-        <div class="page-head"><h2>More</h2><p>Plans, trainers, notices, settings aur data — sab yahin.</p></div>
+        <div class="page-head"><h2>More</h2><p>Plans, trainers, notices, settings and data — all here.</p></div>
 
         <div class="card"><h3>Plans</h3>
           <div id="planRows"></div>
@@ -288,9 +287,9 @@
         <div class="card"><h3>Notices</h3>
           <div id="noticeList"></div>
           <form class="form" id="noticeForm">
-            <div><label>Title *</label><input name="title" required placeholder="Notice ka title"></div>
+            <div><label>Title *</label><input name="title" required placeholder="Notice title"></div>
             <div><label>Tag</label><select name="tag"><option>General</option><option>Holiday</option><option>Fees</option><option>Timing</option><option>Event</option></select></div>
-            <div class="full"><label>Message *</label><textarea name="body" rows="3" required placeholder="Notice likho…"></textarea></div>
+            <div class="full"><label>Message *</label><textarea name="body" rows="3" required placeholder="Write the notice…"></textarea></div>
             <div class="full"><button class="btn" type="submit">Publish Notice</button></div>
           </form>
         </div>
@@ -298,21 +297,21 @@
         <div class="card"><h3>Settings</h3>
           <form class="form" id="settingsForm">
             <div><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
-            <div><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+            <div><label>Owner Name</label><input name="ownerName" placeholder="Owner's name"></div>
             <div><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
             <div class="full photo-block">
               <label>Gym Logo (optional)</label>
               <div class="photo-picker">
                 <div class="photo-preview" id="setLogoPreview"><span>?</span></div>
                 <div class="photo-actions">
-                  <button class="btn secondary" type="button" id="setLogoCameraBtn">📷 Logo lo</button>
-                  <button class="btn secondary" type="button" id="setLogoGalleryBtn">🖼️ Gallery se chuno</button>
-                  <button class="btn ghost" type="button" id="setLogoRemoveBtn" hidden>Hatao</button>
+                  <button class="btn secondary" type="button" id="setLogoCameraBtn">📷 Take logo</button>
+                  <button class="btn secondary" type="button" id="setLogoGalleryBtn">🖼️ Choose from gallery</button>
+                  <button class="btn ghost" type="button" id="setLogoRemoveBtn" hidden>Remove</button>
                 </div>
               </div>
               <input type="file" id="setLogoCameraInput" accept="image/*" capture="environment" hidden>
               <input type="file" id="setLogoGalleryInput" accept="image/*" hidden>
-              <p class="muted photo-status" id="setLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+              <p class="muted photo-status" id="setLogoStatus">Logo is auto-compressed on save (~50KB).</p>
             </div>
             <div class="full"><button class="btn" type="submit">Save Settings</button></div>
           </form>
@@ -322,7 +321,7 @@
         </div>
 
         <div class="card"><h3>Data</h3>
-          <p class="muted">Backup ya restore — saara data ek JSON file me.</p>
+          <p class="muted">Backup or restore — all data in one JSON file.</p>
           <p class="muted" id="storageInfo"></p>
           <div class="toolbar">
             <button class="btn secondary" id="exportBtn">Export Data</button>
@@ -379,10 +378,10 @@
   </div>
 </div>
 
-<script src="config.js?v=6"></script>
-<script src="auth.js?v=6"></script>
-<script src="data.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="auth.js?v=7"></script>
+<script src="data.js?v=7"></script>
+<script src="app.js?v=7"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

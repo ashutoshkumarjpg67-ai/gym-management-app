@@ -128,11 +128,11 @@
   var attWorking = {};
 
   var TITLES = {
-    home: ["Home", "Aaj ka summary — collection, attendance, due fees, ek nazar me."],
-    members: ["Members", "Saare members ki list, search aur trainer filter. Naya member yahin se add karo."],
-    fees: ["Fees", "Fees ka hisaab — Month chuno. Payment yahin se lo, receipt bhi yahin milegi."],
-    attendance: ["Attendance", "Date chuno — phir Present / Absent mark karo aur Save karo."],
-    more: ["More", "Plans, trainers, notices, settings aur data backup — sab yahin."],
+    home: ["Home", "Today's summary — collection, attendance and due fees at a glance."],
+    members: ["Members", "All members — search and filter by trainer. Add a new member here."],
+    fees: ["Fees", "Fee summary — choose a month. Collect payments and get receipts here."],
+    attendance: ["Attendance", "Pick a date — then mark Present / Absent and save."],
+    more: ["More", "Plans, trainers, notices, settings and data backup — all here."],
   };
 
   /* ---------- Navigation ---------- */
@@ -230,8 +230,8 @@
     }
     var nm = (legacy.members || []).length;
     var np = (legacy.plans || []).length;
-    var gname = (legacy.settings && legacy.settings.gymName) || "Aapke gym";
-    setText("migrateInfo", gname + " ka purana data mila — " + nm + " members, " + np + " plans. Apna Gmail aur password set karo, data naye account me aa jayega.");
+    var gname = (legacy.settings && legacy.settings.gymName) || "Your gym";
+    setText("migrateInfo", gname + " old data found — " + nm + (nm === 1 ? " member, " : " members, ") + np + (np === 1 ? " plan. " : " plans. ") + "Set your Gmail and password and your data will move to the new account.");
   }
 
   /* ----- Logo picker (signup / migrate / settings) -----
@@ -252,14 +252,14 @@
     }
     function handleFile(file) {
       if (!file) return;
-      setText(p.status, "Logo compress ho raha hai…");
+      setText(p.status, "Compressing logo…");
       compressPhoto(file).then(function (url) {
         if (url) {
           value = url;
-          setText(p.status, "Logo ready ✓ ~" + Math.round(url.length / 1024) + "KB — automatic compress hokar save hoga.");
+          setText(p.status, "Logo ready ✓ ~" + Math.round(url.length / 1024) + "KB — auto-compressed on save.");
         } else {
           value = null;
-          setText(p.status, "Logo compress nahi ho paya — bina logo ke aage badho. Dobara try karo.");
+          setText(p.status, "Logo could not be compressed — continue without a logo. Try again.");
         }
         render();
       });
@@ -269,7 +269,7 @@
     on(p.galleryBtn, "click", function () { clickInput(p.galleryInput); });
     on(p.cameraInput, "change", function (e) { handleFile(e.target.files && e.target.files[0]); e.target.value = ""; });
     on(p.galleryInput, "change", function (e) { handleFile(e.target.files && e.target.files[0]); e.target.value = ""; });
-    on(p.removeBtn, "click", function () { value = null; setText(p.status, "Logo hata diya gaya."); render(); });
+    on(p.removeBtn, "click", function () { value = null; setText(p.status, "Logo removed."); render(); });
     return {
       get: function () { return value; },
       set: function (v) { value = v || null; render(); },
@@ -301,20 +301,20 @@
     var password = fv(f, "password");
     var confirm = fv(f, "confirm");
     var gymName = fv(f, "gymName").trim();
-    if (!EMAIL_RE.test(email)) return { ok: false, error: "Sahi Gmail address likho." };
-    if (!password || password.length < 6) return { ok: false, error: "Password kam se kam 6 characters ka rakho." };
-    if (password !== confirm) return { ok: false, error: "Password dobara same likho." };
-    if (!gymName) return { ok: false, error: "Gym ka naam likho." };
+    if (!EMAIL_RE.test(email)) return { ok: false, error: "Enter a valid Gmail address." };
+    if (!password || password.length < 6) return { ok: false, error: "Password must be at least 6 characters long." };
+    if (password !== confirm) return { ok: false, error: "Passwords do not match — re-enter the same password." };
+    if (!gymName) return { ok: false, error: "Enter the gym name." };
     return { ok: true, email: email, password: password, gymName: gymName, city: fv(f, "city").trim(), ownerName: fv(f, "ownerName").trim() };
   }
   function authErrorText(res) {
-    if (!res) return "Kuch gadbad hui — dobara try karo.";
-    if (res.error === "email-exists") return "Is Gmail se account pehle se bana hai — Login karo.";
-    if (res.error === "invalid-email") return "Sahi Gmail address likho.";
-    if (res.error === "weak-password") return "Password kam se kam 6 characters ka rakho.";
-    if (res.error === "no-gym-name") return "Gym ka naam likho.";
-    if (res.error === "no-crypto") return "Is browser me secure login available nahi hai.";
-    return "Kuch gadbad hui — dobara try karo.";
+    if (!res) return "Something went wrong — try again.";
+    if (res.error === "email-exists") return "An account with this Gmail already exists — please log in.";
+    if (res.error === "invalid-email") return "Enter a valid Gmail address.";
+    if (res.error === "weak-password") return "Password must be at least 6 characters long.";
+    if (res.error === "no-gym-name") return "Enter the gym name.";
+    if (res.error === "no-crypto") return "Secure login is not available in this browser.";
+    return "Something went wrong — try again.";
   }
   function setBusy(form, busy, busyText) {
     var btn = form ? form.querySelector("button[type=submit]") : null;
@@ -337,14 +337,14 @@
     var email = fv(f, "email").trim().toLowerCase();
     var password = fv(f, "password");
     showAuthErr("loginErr", "");
-    setBusy(f, true, "Login ho raha hai…");
+    setBusy(f, true, "Logging in…");
     window.GymAuth.login(email, password).then(function (res) {
       setBusy(f, false);
       if (res && res.ok) { enterApp(res.account); return; }
-      var msg = "Login nahi ho paya — dobara try karo.";
-      if (res && res.error === "wrong-password") msg = "Galat Gmail ya password.";
-      else if (res && res.error === "no-account") msg = "Is Gmail se koi account nahi hai — pehle Sign up karo.";
-      else if (res && res.error === "no-crypto") msg = "Is browser me secure login available nahi hai.";
+      var msg = "Login failed — try again.";
+      if (res && res.error === "wrong-password") msg = "Wrong Gmail or password.";
+      else if (res && res.error === "no-account") msg = "No account with this Gmail — please sign up first.";
+      else if (res && res.error === "no-crypto") msg = "Secure login is not available in this browser.";
       showAuthErr("loginErr", msg);
     });
   });
@@ -356,7 +356,7 @@
     var v = validateAuthForm(f);
     if (!v.ok) { showAuthErr("signupErr", v.error); return; }
     showAuthErr("signupErr", "");
-    setBusy(f, true, "Account ban raha hai…");
+    setBusy(f, true, "Creating account…");
     window.GymAuth.createAccount({ email: v.email, password: v.password, gymName: v.gymName, city: v.city, ownerName: v.ownerName, logo: signupLogoPicker.get() || "" }).then(function (res) {
       setBusy(f, false);
       if (res && res.ok) { enterApp(res.account); return; }
@@ -375,12 +375,12 @@
     var v = validateAuthForm(f);
     if (!v.ok) { showAuthErr("migrateErr", v.error); return; }
     showAuthErr("migrateErr", "");
-    setBusy(f, true, "Account ban raha hai…");
+    setBusy(f, true, "Creating account…");
     var legacy = null;
     try { legacy = window.GymAuth.readLegacy(); } catch (err) { legacy = null; }
     if (!legacy) {
       setBusy(f, false);
-      showAuthErr("migrateErr", "Purana data nahi mila — dobara load karo.");
+      showAuthErr("migrateErr", "Old data not found — reload and try again.");
       return;
     }
     window.GymAuth.createAccount({ email: v.email, password: v.password, gymName: v.gymName, city: v.city, ownerName: v.ownerName, logo: migrateLogoPicker.get() || "" }).then(function (res) {
@@ -404,7 +404,7 @@
       }
       if (!verified) {
         setBusy(f, false);
-        showAuthErr("migrateErr", "Data copy verify nahi hua — purana data safe hai, dobara try karo.");
+        showAuthErr("migrateErr", "Data copy could not be verified — your old data is safe, try again.");
         return;
       }
       try { window.GymAuth.clearLegacy(); } catch (err) {}
@@ -475,18 +475,18 @@
     var defs = D.defaulters();
     var att = "";
     exp.forEach(function (e) {
-      att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(e.member ? e.member.name : "") + " — " + esc(e.planName) + "</div><div class='s'>Plan " + D.fmtDate(e.endDate) + " ko khatam ho raha hai (" + e.daysLeft + " din bache)</div></div><span class='badge orange'>Expiring</span></div>";
+      att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(e.member ? e.member.name : "") + " — " + esc(e.planName) + "</div><div class='s'>Plan ends on " + D.fmtDate(e.endDate) + " (" + e.daysLeft + " days left)</div></div><span class='badge orange'>Expiring</span></div>";
     });
     defs.forEach(function (d) {
       var name = d.member ? d.member.name : "";
       att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(name) + "</div><div class='s'>Fees due — " + inr(d.due) + "</div></div><span class='badge due'>Due</span></div>";
     });
-    setHTML("attentionList", att || emptyHTML("✅", "Sab theek hai", "Koi expiring plan ya due fees nahi hai."));
+    setHTML("attentionList", att || emptyHTML("✅", "All good", "No expiring plans or due fees."));
 
     var pays = D.paymentsRecent(10);
     setHTML("recentPayments", pays.map(function (p) {
       return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.member) + "</div><div class='s'>" + esc(p.method || "Cash") + " • " + D.fmtDate(p.date) + "</div></div><b>" + inr(p.amount) + "</b></div>";
-    }).join("") || emptyHTML("🧾", "No payments yet", "Pehli payment collect karte hi yahan dikhegi."));
+    }).join("") || emptyHTML("🧾", "No payments yet", "Your first collected payment will show here."));
   }
 
   /* ---------- Members ---------- */
@@ -503,7 +503,7 @@
       return "<tr data-member='" + m.id + "'><td>" + avatarHTML(m) + " " + esc(m.name) + "</td>" +
         "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + esc(trainerName(m.trainerId)) + "</td>" +
         "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
-    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
+    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Start by adding a member.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
     var rowsEl = $("memberRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-member]").forEach(function (r) {
       r.addEventListener("click", function () { openMember(r.getAttribute("data-member")); });
@@ -539,14 +539,14 @@
     var fees = D.feesFor("All", "All").filter(function (f) { return f.memberId === id; });
     setHTML("memberFeeRows", fees.map(function (f) {
       return "<tr><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + "</td><td>" + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td></tr>";
-    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "Is member ki koi fee record nahi hai.") + "</td></tr>");
+    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "This member has no fee records.") + "</td></tr>");
 
     var attMap = D.getState().attendance || {};
     var dates = Object.keys(attMap).sort().reverse().slice(0, 7);
     setHTML("memberAttRecent", dates.map(function (d) {
       var v = attMap[d][id];
       return "<div class='list-row'><div class='grow'><div class='t'>" + D.fmtDate(d) + "</div></div><span class='badge " + (v === "Present" ? "paid" : v === "Absent" ? "due" : "info") + "'>" + esc(v || "—") + "</span></div>";
-    }).join("") || emptyHTML("✓", "No attendance yet", "Attendance mark karte hi yahan dikhegi."));
+    }).join("") || emptyHTML("✓", "No attendance yet", "It will show here once attendance is marked."));
 
     // Assign plan
     var sel = $("assignPlanSelect");
@@ -554,13 +554,13 @@
       sel.innerHTML = "";
       D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
     }
-    setText("assignMsg", D.plansList().length ? "" : "Pehle ek membership plan banao");
+    setText("assignMsg", D.plansList().length ? "" : "Create a membership plan first");
     if (ap) {
       setHTML("activePlanBox", "<div class='kv'><dt>Plan</dt><dd>" + esc(ap.planName) + "</dd><dt>Valid till</dt><dd>" + D.fmtDate(ap.endDate) + "</dd><dt>Price</dt><dd>" + inr(ap.price) + "</dd></div>");
       if ($("activePlanBox")) $("activePlanBox").hidden = false;
       if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
     } else {
-      setHTML("activePlanBox", "<p class='muted'>Is member ka koi active plan nahi hai.</p>");
+      setHTML("activePlanBox", "<p class='muted'>This member has no active plan.</p>");
       if ($("activePlanBox")) $("activePlanBox").hidden = false;
       if ($("renewPlanBtn")) $("renewPlanBtn").hidden = true;
     }
@@ -592,7 +592,7 @@
     setText("memberFormTitle", "Edit Member");
     if ($("memberIdField")) $("memberIdField").value = m.id;
     pendingPhoto = m.photo || null;
-    setText("photoStatus", pendingPhoto ? "Photo saved hai — badalne ke liye nayi photo lo ya hatao." : PHOTO_STATUS_DEFAULT);
+    setText("photoStatus", pendingPhoto ? "Photo saved — take a new photo or remove it to change." : PHOTO_STATUS_DEFAULT);
     setPhotoPreview();
     setText("memberFormTitle", "Edit Member");
     if ($("memberFormCard")) { $("memberFormCard").hidden = false; scrollToEl($("memberFormCard")); }
@@ -600,48 +600,48 @@
   on("archiveMemberBtn", "click", function () {
     var m = D.memberById(currentMemberId);
     if (!m) return;
-    askConfirm("Archive member?", m.name + " ko archive kar diya jayega. Ye wapas nahi aayega.", "Yes, archive").then(function (ok) {
+    askConfirm("Archive member?", m.name + " will be archived. This cannot be undone.", "Yes, archive").then(function (ok) {
       if (!ok) return;
       D.archiveMember(m.id);
       if ($("memberCard")) $("memberCard").hidden = true;
       currentMemberId = null;
       renderMembers(); renderHome();
-      setText("memberMsg", "✓ " + m.name + " archived ho gaya.");
+      setText("memberMsg", "✓ " + m.name + " archived.");
     });
   });
   on("assignPlanBtn", "click", function () {
     if (!currentMemberId) return;
     var plans = D.plansList();
-    if (!plans.length) { setText("assignMsg", "Pehle ek membership plan banao"); return; }
+    if (!plans.length) { setText("assignMsg", "Create a membership plan first"); return; }
     var planId = $("assignPlanSelect") ? $("assignPlanSelect").value : "";
-    if (!planId) { setText("assignMsg", "Pehle ek plan chuno."); return; }
+    if (!planId) { setText("assignMsg", "Choose a plan first."); return; }
     var res = D.assignPlan(currentMemberId, planId);
     if (!res.ok) {
       if (res.error === "active-exists") {
         setText("assignMsg", "Already has an active plan — use Renew");
         if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
       } else {
-        setText("assignMsg", "Plan assign nahi hua — dobara try karo.");
+        setText("assignMsg", "Plan could not be assigned — try again.");
       }
       return;
     }
     openMember(currentMemberId);
     renderMembers();
-    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record ban gaya hai (Due).");
+    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record created (Due).");
     return;
   });
   on("renewPlanBtn", "click", function () {
     if (!currentMpId) return;
     var res = D.renewPlan(currentMpId);
-    if (!res.ok) { setText("assignMsg", "Renew nahi hua — plan delete ho gaya hoga. Naya plan assign karo."); return; }
+    if (!res.ok) { setText("assignMsg", "Renew failed — the plan may have been deleted. Assign a new plan."); return; }
     openMember(currentMemberId);
     renderMembers();
-    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record ban gaya hai (Due).");
+    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record created (Due).");
   });
 
   /* ---------- Member photo picker (admission / edit form) ---------- */
   var pendingPhoto = null; // compressed JPEG data URL, ya null (koi photo nahi)
-  var PHOTO_STATUS_DEFAULT = "Photo automatic compress hokar save hogi (~50KB), taaki phone storage na bhare.";
+  var PHOTO_STATUS_DEFAULT = "Photo is auto-compressed on save (~50KB) so phone storage doesn't fill up.";
   function setPhotoPreview() {
     var prev = $("photoPreview");
     if (!prev) return;
@@ -662,14 +662,14 @@
   }
   function handlePhotoFile(file) {
     if (!file) return;
-    setText("photoStatus", "Photo compress ho rahi hai…");
+    setText("photoStatus", "Compressing photo…");
     compressPhoto(file).then(function (url) {
       if (url) {
         pendingPhoto = url;
-        setText("photoStatus", "Photo ready ✓ ~" + Math.round(url.length / 1024) + "KB — automatic compress hokar save hogi.");
+        setText("photoStatus", "Photo ready ✓ ~" + Math.round(url.length / 1024) + "KB — auto-compressed on save.");
       } else {
         pendingPhoto = null;
-        setText("photoStatus", "Photo compress nahi ho payi — bina photo ke admission hoga. Dobara try karo.");
+        setText("photoStatus", "Photo could not be compressed — admission will continue without a photo. Try again.");
       }
       setPhotoPreview();
     });
@@ -681,7 +681,7 @@
   on("photoGalleryInput", "change", function (e) { handlePhotoFile(e.target.files && e.target.files[0]); e.target.value = ""; });
   on("photoRemoveBtn", "click", function () {
     pendingPhoto = null;
-    setText("photoStatus", "Photo hata di gayi.");
+    setText("photoStatus", "Photo removed.");
     setPhotoPreview();
   });
   // Naam type karte hi preview me initials update hon (jab tak photo na ho)
@@ -754,7 +754,7 @@
         } else { D.removeMember(saved.id); return failQuotaSave(); }
       }
     }
-    if (photoDropped) setText("memberMsg", "⚠️ Storage lagbhag full hai — member photo ke bina save hua. More → Data se Export karke backup lo, phir purana data delete karke dobara photo add kar sakte ho.");
+    if (photoDropped) setText("memberMsg", "⚠️ Storage is almost full — member saved without photo. Take a backup from More → Data → Export, then delete old data to add the photo again.");
     else setText("memberMsg", "");
     pendingPhoto = null;
     if ($("memberFormCard")) $("memberFormCard").hidden = true;
@@ -763,7 +763,7 @@
     if (id) openMember(id);
   });
   function failQuotaSave() {
-    setText("memberMsg", "⚠️ Storage full ho gaya — save nahi hua. More → Data se Export karke backup lo, phir purana data delete karo aur dobara try karo.");
+    setText("memberMsg", "⚠️ Storage is full — could not save. Take a backup from More → Data → Export, then delete old data and try again.");
   }
 
   /* ---------- Fees ---------- */
@@ -787,12 +787,12 @@
         var name = d.member ? d.member.name : "";
         var phone = d.member ? d.member.phone : "";
         var s = D.settings();
-        var text = "Namaste " + name + ", aapki gym fees " + inr(d.due) + " due hai — " + s.gymName + ", " + s.city;
+        var text = "Hello " + name + ", your gym fees of " + inr(d.due) + " are due — " + s.gymName + ", " + s.city;
         var waBtn = phone
           ? "<a class='btn small' href='" + esc(waLink(phone, text)) + "' target='_blank' rel='noopener'>WhatsApp</a>"
-          : "<button class='btn small' disabled title='Phone nahi hai'>WhatsApp</button>";
+          : "<button class='btn small' disabled title='No phone number'>WhatsApp</button>";
         return "<tr><td>" + esc(name) + "</td><td>" + d.fees.length + " fee record(s)</td><td>" + inr(d.due) + "</td><td>—</td><td>" + inr(d.due) + "</td><td><span class='badge due'>Due</span></td><td>" + waBtn + "</td></tr>";
-      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("✅", "No defaulters", "Koi defaulter nahi hai — sab fees paid hain.") + "</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("✅", "No defaulters", "No defaulters — all fees are paid.") + "</td></tr>";
     } else {
       var list = D.feesFor(feeMonth, "All");
       if (feeTab === "paid") list = list.filter(function (f) { return f.status === "Paid"; });
@@ -800,7 +800,7 @@
       html = list.map(function (f) {
         return "<tr><td>" + esc(f.member) + "</td><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td>" +
           "<td>" + (f.due > 0 ? "<button class='btn small' data-pay='" + f.id + "'>Collect</button>" : "") + "</td></tr>";
-      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "Is filter ke liye koi fee record nahi hai.") + "</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "No fee records for this filter.") + "</td></tr>";
     }
     setHTML("feeRows", html);
     var rowsEl = $("feeRows");
@@ -866,7 +866,7 @@
     var amtEl = $("payAmount");
     if (!f || !amtEl) { setText("payWarn", ""); return; }
     var amt = parseInt(amtEl.value, 10) || 0;
-    if (amt > f.due) setText("payWarn", "Due sirf " + inr(f.due) + " hai — " + inr(amt - f.due) + " zyada hai. Sirf " + inr(f.due) + " collect hoga.");
+    if (amt > f.due) setText("payWarn", "Due is only " + inr(f.due) + " — " + inr(amt - f.due) + " extra. Only " + inr(f.due) + " will be collected.");
     else setText("payWarn", "");
   }
   function openPayModal(feeId) {
@@ -897,7 +897,7 @@
     var receiptText = s.gymName + " — Fee Receipt\nMember: " + f.member + "\nFee: " + f.type + (f.planName ? " — " + f.planName : "") + " (" + f.period + ")\nCollected now: " + inr(res.applied) + "\nTotal Paid: " + inr(f.paid) + " / " + inr(f.amount) + "\nBalance Due: " + inr(f.due) + "\nDate: " + today;
     var waPart = phone
       ? "<a class='btn secondary' href='" + esc(waLink(phone, receiptText)) + "' target='_blank' rel='noopener'>Send on WhatsApp</a>"
-      : "<p class='muted'>Member ka phone number nahi hai</p>";
+      : "<p class='muted'>Member's phone number is not available</p>";
     setHTML("receiptBox",
       "<div class='receipt'><b>Receipt — " + esc(s.gymName) + "</b>" +
       "<div class='row'><span>Member</span><span>" + esc(f.member) + "</span></div>" +
@@ -907,7 +907,7 @@
       "<div class='row'><span>Balance Due</span><span>" + inr(f.due) + "</span></div>" +
       "<div class='row'><span>Method</span><span>" + esc(method) + "</span></div>" +
       "<div class='row'><span>Date</span><span>" + today + "</span></div>" +
-      (res.overpaid > 0 ? "<p class='muted'>" + inr(res.overpaid) + " zyada tha — collect nahi hua.</p>" : "") +
+      (res.overpaid > 0 ? "<p class='muted'>" + inr(res.overpaid) + " extra was not collected.</p>" : "") +
       "</div><button class='btn secondary' onclick='window.print()'>Print Receipt</button> " + waPart);
     setText("payWarn", "");
     renderFees(); renderHome();
@@ -919,12 +919,12 @@
     setHTML("expenseRows", list.map(function (e) {
       return "<tr><td>" + esc(e.title) + "</td><td>" + D.fmtDate(e.date) + "</td><td>" + inr(e.amount) + "</td><td><span class='badge " + (e.status === "Paid" ? "paid" : "due") + "'>" + esc(e.status || "Paid") + "</span></td>" +
         "<td><button class='btn small danger' data-exp='" + e.id + "'>Delete</button></td></tr>";
-    }).join("") || "<tr><td colspan='5' class='empty-cell'>" + emptyHTML("💸", "No expenses yet", "Add Expense se pehla kharcha add karo.") + "</td></tr>");
+    }).join("") || "<tr><td colspan='5' class='empty-cell'>" + emptyHTML("💸", "No expenses yet", "Add your first expense.") + "</td></tr>");
     setText("expenseTotal", inr(D.expenseTotal()));
     var rowsEl = $("expenseRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-exp]").forEach(function (b) {
       b.addEventListener("click", function () {
-        askConfirm("Delete expense?", "Ye expense delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+        askConfirm("Delete expense?", "This expense will be deleted. This cannot be undone.", "Yes, delete").then(function (ok) {
           if (!ok) return;
           D.deleteExpense(b.getAttribute("data-exp"));
           renderFees();
@@ -964,7 +964,7 @@
       return "<div class='att-row'>" + avatarHTML(m) + "<div class='grow'><b>" + esc(m.name) + "</b><div class='muted'>" + esc(m.phone || "") + "</div></div>" +
         "<span class='seg'><button type='button' data-att='" + m.id + "' data-v='Present' class='" + (attWorking[m.id] === "Present" ? "on-p" : "") + "'>Present</button>" +
         "<button type='button' data-att='" + m.id + "' data-v='Absent' class='" + (attWorking[m.id] === "Absent" ? "on-a" : "") + "'>Absent</button></span></div>";
-    }).join("") || emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMemberAtt", label: "+ Add Member" }));
+    }).join("") || emptyHTML("👥", "No members yet", "Start by adding a member.", { id: "emptyAddMemberAtt", label: "+ Add Member" }));
     var listEl = $("attList");
     if (listEl) listEl.querySelectorAll("[data-att]").forEach(function (b) {
       b.addEventListener("click", function () { attWorking[b.getAttribute("data-att")] = b.getAttribute("data-v"); renderAttendance(); });
@@ -990,14 +990,14 @@
     setHTML("planRows", D.plansList().map(function (p) {
       return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.name) + "</div><div class='s'>" + p.days + " days • " + inr(p.price) + "</div></div>" +
         "<button class='btn small secondary' data-plan-edit='" + p.id + "'>Edit</button> <button class='btn small danger' data-plan-del='" + p.id + "'>Delete</button></div>";
-    }).join("") || emptyHTML("📋", "No plans yet", "Pehle ek membership plan banao.", { id: "emptyAddPlan", label: "+ Add Plan" }));
+    }).join("") || emptyHTML("📋", "No plans yet", "Create a membership plan first.", { id: "emptyAddPlan", label: "+ Add Plan" }));
     setHTML("trainerRows", D.trainersList().map(function (t) {
       return "<div class='list-row'><span class='avatar'>" + esc(initials(t.name)) + "</span><div class='grow'><div class='t'>" + esc(t.name) + "</div><div class='s'>" + esc(t.specialty || "") + (t.phone ? " • " + esc(t.phone) : "") + "</div></div>" +
         "<button class='btn small secondary' data-trainer-edit='" + t.id + "'>Edit</button> <button class='btn small danger' data-trainer-del='" + t.id + "'>Delete</button></div>";
-    }).join("") || emptyHTML("💪", "No trainers yet", "Pehla trainer add karo.", { id: "emptyAddTrainer", label: "+ Add Trainer" }));
+    }).join("") || emptyHTML("💪", "No trainers yet", "Add your first trainer.", { id: "emptyAddTrainer", label: "+ Add Trainer" }));
     setHTML("noticeList", D.getState().notices.map(function (n) {
       return "<div class='card'><div class='list-row'><div class='grow'><div class='t'>" + esc(n.title) + "</div><div>" + esc(n.body) + "</div><div class='s'>" + D.fmtDate(n.date) + (n.tag ? " • " + esc(n.tag) : "") + "</div></div><button class='btn small danger' data-notice-del='" + n.id + "'>Delete</button></div></div>";
-    }).join("") || emptyHTML("📢", "No notices yet", "Pehla notice publish karo."));
+    }).join("") || emptyHTML("📢", "No notices yet", "Publish your first notice."));
 
     var pr = $("planRows");
     if (pr) {
@@ -1015,7 +1015,7 @@
       });
       pr.querySelectorAll("[data-plan-del]").forEach(function (b) {
         b.addEventListener("click", function () {
-          askConfirm("Delete plan?", "Ye plan delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+          askConfirm("Delete plan?", "This plan will be deleted. This cannot be undone.", "Yes, delete").then(function (ok) {
             if (!ok) return;
             D.deletePlan(b.getAttribute("data-plan-del"));
             renderMore();
@@ -1038,7 +1038,7 @@
       });
       tr.querySelectorAll("[data-trainer-del]").forEach(function (b) {
         b.addEventListener("click", function () {
-          askConfirm("Delete trainer?", "Ye trainer delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+          askConfirm("Delete trainer?", "This trainer will be deleted. This cannot be undone.", "Yes, delete").then(function (ok) {
             if (!ok) return;
             D.deleteTrainer(b.getAttribute("data-trainer-del"));
             fillSelects(); renderMore();
@@ -1049,7 +1049,7 @@
     var nl = $("noticeList");
     if (nl) nl.querySelectorAll("[data-notice-del]").forEach(function (b) {
       b.addEventListener("click", function () {
-        askConfirm("Delete notice?", "Ye notice delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+        askConfirm("Delete notice?", "This notice will be deleted. This cannot be undone.", "Yes, delete").then(function (ok) {
           if (!ok) return;
           D.deleteNotice(b.getAttribute("data-notice-del"));
           renderMore();
@@ -1070,7 +1070,7 @@
     try { acct = window.GymAuth.currentAccount(); } catch (e) { acct = null; }
     setText("loginEmailLine", acct && acct.email ? "Logged in as: " + acct.email : "");
     var si = D.storageInfo();
-    setText("storageInfo", "Storage use: ~" + Math.round(si.bytes / 1024) + " KB • " + si.members + " members • " + si.photos + " photos (" + Math.round(si.photoChars / 1024) + " KB). Storage lagbhag full ho to nayi photo bina save hogi — Export se backup lo.");
+    setText("storageInfo", "Storage use: ~" + Math.round(si.bytes / 1024) + " KB • " + si.members + " members • " + si.photos + " photos (" + Math.round(si.photoChars / 1024) + " KB). If storage is almost full, new photos will be saved without the photo — take a backup via Export.");
   }
   on("planForm", "submit", function (e) {
     e.preventDefault();
@@ -1137,14 +1137,14 @@
     var reader = new FileReader();
     reader.onload = function () {
       var ok = D.importJSON(String(reader.result || ""));
-      setText("importMsg", ok ? "Import ho gaya ✓ — data load ho gaya hai." : "Import fail — sahi backup file chuno.");
+      setText("importMsg", ok ? "Import complete ✓ — data has been loaded." : "Import failed — choose the correct backup file.");
       if (ok) { fillSelects(); applySettings(); renderSection(currentSection); }
     };
     reader.readAsText(file);
     e.target.value = "";
   });
   on("resetBtn", "click", function () {
-    askConfirm("Reset all data?", "Saara data delete ho jayega — ye wapas nahi aayega.", "Yes, reset").then(function (ok) {
+    askConfirm("Reset all data?", "All data will be deleted — this cannot be undone.", "Yes, reset").then(function (ok) {
       if (!ok) return;
       D.resetAll();
       fillSelects(); applySettings();
