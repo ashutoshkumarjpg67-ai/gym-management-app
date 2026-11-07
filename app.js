@@ -820,7 +820,7 @@
     var q = ($("feeSearch") ? $("feeSearch").value : "").toLowerCase();
     var html = "";
     if (feeTab === "defaulters") {
-      var defs = D.defaulters().filter(function (d) {
+      var defs = D.defaulters(feeMonth).filter(function (d) {
         var name = d.member ? d.member.name : "";
         return !q || name.toLowerCase().indexOf(q) !== -1;
       });

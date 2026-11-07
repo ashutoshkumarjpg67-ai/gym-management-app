@@ -370,10 +370,14 @@
       state.payments.forEach(function (p) { if (p.date === today) sum += p.amount; });
       return sum;
     },
-    defaulters: function () {
+    defaulters: function (month) {
       var map = {};
       state.fees.forEach(function (f) {
         if (f.due <= 0) return;
+        // Month diya ho (jaise "2026-08") to sirf us mahine ke unpaid
+        // fees gino — nahi to August ke filter par November ke defaulter
+        // dikhte hain, jabki member August mein join hi nahi hua tha.
+        if (month && month !== "All" && f.month !== month) return;
         if (!map[f.memberId]) map[f.memberId] = { member: this.memberById(f.memberId), due: 0, fees: [] };
         map[f.memberId].due += f.due;
         map[f.memberId].fees.push(f);
