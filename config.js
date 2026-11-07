@@ -12,7 +12,7 @@
  */
 window.GYM_CONFIG = {
   APP_NAME: "Gym Management App",
-  VERSION: "1.5.3",
+  VERSION: "1.5.4",
   // One app, each gym a separate account. The active gym is stored
   // in the data layer (see data.js). Never hard-code another gym's data.
   USE_SUPABASE: false,

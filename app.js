@@ -564,6 +564,7 @@
     var sel = $("assignPlanSelect");
     if (sel) {
       sel.innerHTML = "";
+      if (!D.plansList().length) { var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "No plans yet — create one in More → Plans"; sel.appendChild(o0); }
       D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
     }
     setText("assignMsg", D.plansList().length ? "" : "Create a membership plan first");
@@ -642,7 +643,8 @@
     }
     openMember(currentMemberId);
     renderMembers();
-    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record created (Due).");
+    if (res.feeSkipped) setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee for " + D.monthLabel(res.mp.startDate.slice(0, 7)) + " already exists, so no new fee record was created.");
+    else setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record created (Due).");
     return;
   });
   on("renewPlanBtn", "click", function () {
@@ -651,7 +653,8 @@
     if (!res.ok) { setText("assignMsg", "Renew failed — the plan may have been deleted. Assign a new plan."); return; }
     openMember(currentMemberId);
     renderMembers();
-    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record created (Due).");
+    if (res.feeSkipped) setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee for " + D.monthLabel(res.feeMonth || D.todayStr().slice(0, 7)) + " already exists, so no new fee record was created.");
+    else setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record created (Due).");
   });
 
   /* ---------- Member photo picker (admission / edit form) ---------- */
@@ -788,7 +791,7 @@
       var targetId = id || saved.id;
       if (targetId && !D.activePlanFor(targetId)) {
         var pres = D.assignPlan(targetId, chosenPlan);
-        if (pres.ok) planMsg = "Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee record created (Due).";
+        if (pres.ok) planMsg = pres.feeSkipped ? ("Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee for " + D.monthLabel(pres.mp.startDate.slice(0, 7)) + " already exists, so no new fee record was created.") : ("Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee record created (Due).");
       }
     }
     if (photoDropped) setText("memberMsg", "⚠️ Storage is almost full — member saved without photo. Take a backup from More → Data → Export, then delete old data to add the photo again.");
@@ -837,13 +840,25 @@
       if (q) list = list.filter(function (f) { return f.member.toLowerCase().indexOf(q) !== -1; });
       html = list.map(function (f) {
         return "<tr><td>" + esc(f.member) + "</td><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td>" +
-          "<td>" + (f.due > 0 ? "<button class='btn small' data-pay='" + f.id + "'>Collect</button>" : "") + "</td></tr>";
+          "<td>" + (f.due > 0 ? "<button class='btn small' data-pay='" + f.id + "'>Collect</button>" : "") + (f.paid === 0 && f.due > 0 ? " <button class='btn small danger' data-del-fee='" + f.id + "'>Delete</button>" : "") + "</td></tr>";
       }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "No fee records for this filter.") + "</td></tr>";
     }
     setHTML("feeRows", html);
     var rowsEl = $("feeRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-pay]").forEach(function (b) {
       b.addEventListener("click", function () { openPayModal(b.getAttribute("data-pay")); });
+    });
+    if (rowsEl) rowsEl.querySelectorAll("[data-del-fee]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var fid = b.getAttribute("data-del-fee");
+        var rec = D.feesFor("All", "All").filter(function (x) { return x.id === fid; })[0];
+        if (!rec) return;
+        askConfirm("Delete fee record?", rec.member + " — " + rec.type + (rec.planName ? " — " + rec.planName : "") + " • " + rec.period + " • " + inr(rec.amount) + ". This cannot be undone.", "Yes, delete").then(function (ok) {
+          if (!ok) return;
+          D.removeFee(fid);
+          renderFees(); renderHome();
+        });
+      });
     });
     renderExpenses();
   }
@@ -865,8 +880,12 @@
     var amt = parseInt($("feeAmount") ? $("feeAmount").value : "", 10);
     var memberId = $("feeStudent") ? $("feeStudent").value : "";
     if (!memberId || !amt || amt <= 0) return;
-    var rec = D.addFee({ memberId: memberId, type: $("feeType") ? $("feeType").value : "Membership", month: $("feeMonth") ? $("feeMonth").value : D.todayStr().slice(0, 7), amount: amt });
+    var fmonth = $("feeMonth") ? $("feeMonth").value : D.todayStr().slice(0, 7);
+    var ftype = $("feeType") ? $("feeType").value : "Membership";
+    if (D.feeExists(memberId, fmonth, ftype)) { setText("addFeeMsg", "A " + ftype + " fee record already exists for this member in " + D.monthLabel(fmonth) + "."); return; }
+    var rec = D.addFee({ memberId: memberId, type: ftype, month: fmonth, amount: amt });
     if (!rec) return;
+    setText("addFeeMsg", "");
     if ($("addFeeCard")) $("addFeeCard").hidden = true;
     e.target.reset();
     feeMonth = rec.month;

@@ -268,9 +268,14 @@
       var start = todayStr();
       var mp = { id: uid("MP"), memberId: memberId, planId: planId, planName: p.name, startDate: start, endDate: addDays(start, p.days), price: p.price };
       state.memberPlans.push(mp);
-      var fee = this.addFee({ memberId: memberId, type: "Membership", planName: p.name, month: monthOf(start), amount: p.price });
+      // Usi mahine ka Membership fee record pehle se ho (manual Add Fee ya
+      // pehle ka assign) to dobara fee record mat banao — nahi to member
+      // ek hi mahine ki fee do baar dega aur defaulter dikhega.
+      var fee = null, feeSkipped = false;
+      if (this.feeExists(memberId, monthOf(start), "Membership")) { feeSkipped = true; }
+      else { fee = this.addFee({ memberId: memberId, type: "Membership", planName: p.name, month: monthOf(start), amount: p.price }); }
       this.save();
-      return { ok: true, mp: mp, fee: fee };
+      return { ok: true, mp: mp, fee: fee, feeSkipped: feeSkipped };
     },
     renewPlan: function (memberPlanId) {
       var mp = null;
@@ -283,12 +288,31 @@
       mp.endDate = addDays(base, p.days);
       mp.planName = p.name;
       mp.price = p.price;
-      var fee = this.addFee({ memberId: mp.memberId, type: "Membership", planName: p.name, month: monthOf(today), amount: p.price });
+      // Renewal fee us mahine ki hai jab renewed period START hota hai
+      // (base) — current month ki nahi. Agar us mahine ka Membership
+      // fee record pehle se ho to dobara mat banao.
+      var feeMonth = monthOf(base);
+      var fee = null, feeSkipped = false;
+      if (this.feeExists(mp.memberId, feeMonth, "Membership")) { feeSkipped = true; }
+      else { fee = this.addFee({ memberId: mp.memberId, type: "Membership", planName: p.name, month: feeMonth, amount: p.price }); }
       this.save();
-      return { ok: true, mp: mp, fee: fee };
+      return { ok: true, mp: mp, fee: fee, feeSkipped: feeSkipped, feeMonth: feeMonth };
     },
 
     /* ----- Fees & payments ----- */
+    feeExists: function (memberId, month, type) {
+      return state.fees.some(function (f) { return f.memberId === memberId && f.month === month && f.type === type; });
+    },
+    removeFee: function (feeId) {
+      // Sirf bina payment wala (paid === 0) record delete ho sakta hai —
+      // Paid record delete karne se payment history aur totals bigad jayenge.
+      var idx = -1;
+      state.fees.forEach(function (f, i) { if (f.id === feeId) idx = i; });
+      if (idx < 0 || state.fees[idx].paid !== 0) return false;
+      state.fees.splice(idx, 1);
+      this.save();
+      return true;
+    },
     addFee: function (o) {
       var m = this.memberById(o.memberId);
       if (!m) return null;
