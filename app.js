@@ -157,13 +157,274 @@
     else if (name === "more") renderMore();
   }
 
-  /* ---------- Settings / gym name ---------- */
+  /* ---------- Settings / gym name / logo ---------- */
   function applySettings() {
     var s = D.settings();
     setText("gymNameTop", s.gymName);
     setText("gymNameSide", s.gymName);
     setText("gymCitySide", s.city || "");
+    var logo = s.logo || "icon.svg";
+    var side = $("gymLogoSide"); if (side) side.src = logo;
+    var top = $("gymLogoTop"); if (top) top.src = logo;
+    document.title = "Gym Management App — " + s.gymName + (s.city ? ", " + s.city : "");
   }
+
+  /* ---------- Auth (v1.4): login / signup / migration ----------
+     Login se pehle app ka koi data dikhna nahi chahiye — boot() tab tak
+     .app + bottomNav hidden rakhta hai aur sirf auth screen dikhata hai.
+     Auth/data layer: window.GymAuth (auth.js) + window.GymData (data.js).
+     app.js yahan bhi localStorage ko seedha nahi chhuta. */
+  function showAuthErr(id, msg) {
+    var el = $(id);
+    if (!el) return;
+    if (msg) { el.textContent = msg; el.hidden = false; }
+    else { el.textContent = ""; el.hidden = true; }
+  }
+  function showAuth(mode) {
+    var screen = $("authScreen");
+    if (screen) screen.hidden = false;
+    var app = document.querySelector(".app");
+    if (app) app.hidden = true;
+    var bn = $("bottomNav");
+    if (bn) bn.hidden = true;
+    ["loginForm", "signupForm", "migrateForm"].forEach(function (id) {
+      var f = $(id);
+      if (f) f.hidden = (id !== mode + "Form");
+    });
+    if (mode === "migrate") prefillMigrate();
+  }
+  function enterApp(account) {
+    D.initForAccount(account.id, { gymName: account.gymName, city: account.city, ownerName: account.ownerName, logo: account.logo });
+    applySettings();
+    fillSelects();
+    if ($("attDate")) $("attDate").value = D.todayStr();
+    renderSection("home");
+    var screen = $("authScreen");
+    if (screen) screen.hidden = true;
+    var app = document.querySelector(".app");
+    if (app) app.hidden = false;
+    var bn = $("bottomNav");
+    if (bn) bn.hidden = false;
+  }
+  function boot() {
+    var acct = null;
+    try { acct = window.GymAuth.currentAccount(); } catch (e) { acct = null; }
+    if (acct) { enterApp(acct); return; }
+    var hasLegacy = false;
+    try { hasLegacy = window.GymAuth.hasLegacyData(); } catch (e) { hasLegacy = false; }
+    if (hasLegacy) showAuth("migrate");
+    else showAuth("login");
+  }
+
+  /* ----- Migration form prefill (legacy settings + counts) ----- */
+  function prefillMigrate() {
+    var legacy = null;
+    try { legacy = window.GymAuth.readLegacy(); } catch (e) { legacy = null; }
+    if (!legacy) return;
+    var f = $("migrateForm");
+    if (f) {
+      var ls = legacy.settings || {};
+      if (f.elements["gymName"]) f.elements["gymName"].value = ls.gymName || "";
+      if (f.elements["city"]) f.elements["city"].value = ls.city || "";
+      if (f.elements["ownerName"]) f.elements["ownerName"].value = ls.ownerName || "";
+    }
+    var nm = (legacy.members || []).length;
+    var np = (legacy.plans || []).length;
+    var gname = (legacy.settings && legacy.settings.gymName) || "Aapke gym";
+    setText("migrateInfo", gname + " ka purana data mila — " + nm + " members, " + np + " plans. Apna Gmail aur password set karo, data naye account me aa jayega.");
+  }
+
+  /* ----- Logo picker (signup / migrate / settings) -----
+     Member photo picker jaisa hi pattern: camera/gallery → compressPhoto
+     (canvas, max 512px JPEG q0.7) → gol preview; na ho to dumbbell. */
+  function wireLogoPicker(p) {
+    var value = null; // compressed JPEG data URL, ya null (koi logo nahi)
+    var statusEl = p.status ? $(p.status) : null;
+    var statusDefault = statusEl ? statusEl.textContent : "";
+    function render() {
+      var prev = p.preview ? $(p.preview) : null;
+      if (prev) {
+        if (value) prev.innerHTML = "<img src='" + esc(value) + "' alt='Gym logo'>";
+        else prev.innerHTML = "<span>🏋️</span>";
+      }
+      var rm = p.removeBtn ? $(p.removeBtn) : null;
+      if (rm) rm.hidden = !value;
+    }
+    function handleFile(file) {
+      if (!file) return;
+      setText(p.status, "Logo compress ho raha hai…");
+      compressPhoto(file).then(function (url) {
+        if (url) {
+          value = url;
+          setText(p.status, "Logo ready ✓ ~" + Math.round(url.length / 1024) + "KB — automatic compress hokar save hoga.");
+        } else {
+          value = null;
+          setText(p.status, "Logo compress nahi ho paya — bina logo ke aage badho. Dobara try karo.");
+        }
+        render();
+      });
+    }
+    function clickInput(id) { var i = $(id); if (i) i.click(); }
+    on(p.cameraBtn, "click", function () { clickInput(p.cameraInput); });
+    on(p.galleryBtn, "click", function () { clickInput(p.galleryInput); });
+    on(p.cameraInput, "change", function (e) { handleFile(e.target.files && e.target.files[0]); e.target.value = ""; });
+    on(p.galleryInput, "change", function (e) { handleFile(e.target.files && e.target.files[0]); e.target.value = ""; });
+    on(p.removeBtn, "click", function () { value = null; setText(p.status, "Logo hata diya gaya."); render(); });
+    return {
+      get: function () { return value; },
+      set: function (v) { value = v || null; render(); },
+      reset: function () { value = null; setText(p.status, statusDefault); render(); }
+    };
+  }
+  var signupLogoPicker = wireLogoPicker({ preview: "suLogoPreview", cameraBtn: "suLogoCameraBtn", galleryBtn: "suLogoGalleryBtn", cameraInput: "suLogoCameraInput", galleryInput: "suLogoGalleryInput", removeBtn: "suLogoRemoveBtn", status: "suLogoStatus" });
+  var migrateLogoPicker = wireLogoPicker({ preview: "migLogoPreview", cameraBtn: "migLogoCameraBtn", galleryBtn: "migLogoGalleryBtn", cameraInput: "migLogoCameraInput", galleryInput: "migLogoGalleryInput", removeBtn: "migLogoRemoveBtn", status: "migLogoStatus" });
+  var settingsLogoPicker = wireLogoPicker({ preview: "setLogoPreview", cameraBtn: "setLogoCameraBtn", galleryBtn: "setLogoGalleryBtn", cameraInput: "setLogoCameraInput", galleryInput: "setLogoGalleryInput", removeBtn: "setLogoRemoveBtn", status: "setLogoStatus" });
+
+  /* ----- Password eye toggle ----- */
+  document.querySelectorAll(".pw-eye").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var input = $(b.getAttribute("data-target"));
+      if (!input) return;
+      if (input.type === "password") { input.type = "text"; b.textContent = "🙈"; }
+      else { input.type = "password"; b.textContent = "👁"; }
+    });
+  });
+
+  /* ----- Auth form switch ----- */
+  on("toSignup", "click", function () { showAuth("signup"); });
+  on("toLogin", "click", function () { showAuth("login"); });
+
+  /* ----- Shared validation (signup + migration) ----- */
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function validateAuthForm(f) {
+    var email = fv(f, "email").trim().toLowerCase();
+    var password = fv(f, "password");
+    var confirm = fv(f, "confirm");
+    var gymName = fv(f, "gymName").trim();
+    if (!EMAIL_RE.test(email)) return { ok: false, error: "Sahi Gmail address likho." };
+    if (!password || password.length < 6) return { ok: false, error: "Password kam se kam 6 characters ka rakho." };
+    if (password !== confirm) return { ok: false, error: "Password dobara same likho." };
+    if (!gymName) return { ok: false, error: "Gym ka naam likho." };
+    return { ok: true, email: email, password: password, gymName: gymName, city: fv(f, "city").trim(), ownerName: fv(f, "ownerName").trim() };
+  }
+  function authErrorText(res) {
+    if (!res) return "Kuch gadbad hui — dobara try karo.";
+    if (res.error === "email-exists") return "Is Gmail se account pehle se bana hai — Login karo.";
+    if (res.error === "invalid-email") return "Sahi Gmail address likho.";
+    if (res.error === "weak-password") return "Password kam se kam 6 characters ka rakho.";
+    if (res.error === "no-gym-name") return "Gym ka naam likho.";
+    if (res.error === "no-crypto") return "Is browser me secure login available nahi hai.";
+    return "Kuch gadbad hui — dobara try karo.";
+  }
+  function setBusy(form, busy, busyText) {
+    var btn = form ? form.querySelector("button[type=submit]") : null;
+    if (!btn) return;
+    if (busy) {
+      if (!btn.getAttribute("data-label")) btn.setAttribute("data-label", btn.textContent);
+      btn.disabled = true;
+      btn.textContent = busyText;
+    } else {
+      btn.disabled = false;
+      var old = btn.getAttribute("data-label");
+      if (old) btn.textContent = old;
+    }
+  }
+
+  /* ----- LOGIN ----- */
+  on("loginForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var email = fv(f, "email").trim().toLowerCase();
+    var password = fv(f, "password");
+    showAuthErr("loginErr", "");
+    setBusy(f, true, "Login ho raha hai…");
+    window.GymAuth.login(email, password).then(function (res) {
+      setBusy(f, false);
+      if (res && res.ok) { enterApp(res.account); return; }
+      var msg = "Login nahi ho paya — dobara try karo.";
+      if (res && res.error === "wrong-password") msg = "Galat Gmail ya password.";
+      else if (res && res.error === "no-account") msg = "Is Gmail se koi account nahi hai — pehle Sign up karo.";
+      else if (res && res.error === "no-crypto") msg = "Is browser me secure login available nahi hai.";
+      showAuthErr("loginErr", msg);
+    });
+  });
+
+  /* ----- SIGNUP ----- */
+  on("signupForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var v = validateAuthForm(f);
+    if (!v.ok) { showAuthErr("signupErr", v.error); return; }
+    showAuthErr("signupErr", "");
+    setBusy(f, true, "Account ban raha hai…");
+    window.GymAuth.createAccount({ email: v.email, password: v.password, gymName: v.gymName, city: v.city, ownerName: v.ownerName, logo: signupLogoPicker.get() || "" }).then(function (res) {
+      setBusy(f, false);
+      if (res && res.ok) { enterApp(res.account); return; }
+      showAuthErr("signupErr", authErrorText(res));
+    });
+  });
+
+  /* ----- MIGRATION: purana data naye account me -----
+     Order: (1) legacy padho (2) account banao — fail ho to legacy ko
+     haath mat lagao (3) account ka store init karo (4) legacy state
+     replace karo (5) VERIFY karke hi legacy clear karo — verify fail
+     ho to purana data safe rehta hai aur user dobara try kar sakta hai. */
+  on("migrateForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var v = validateAuthForm(f);
+    if (!v.ok) { showAuthErr("migrateErr", v.error); return; }
+    showAuthErr("migrateErr", "");
+    setBusy(f, true, "Account ban raha hai…");
+    var legacy = null;
+    try { legacy = window.GymAuth.readLegacy(); } catch (err) { legacy = null; }
+    if (!legacy) {
+      setBusy(f, false);
+      showAuthErr("migrateErr", "Purana data nahi mila — dobara load karo.");
+      return;
+    }
+    window.GymAuth.createAccount({ email: v.email, password: v.password, gymName: v.gymName, city: v.city, ownerName: v.ownerName, logo: migrateLogoPicker.get() || "" }).then(function (res) {
+      if (!res || !res.ok) {
+        setBusy(f, false);
+        showAuthErr("migrateErr", authErrorText(res));
+        return;
+      }
+      var account = res.account;
+      D.initForAccount(account.id, { gymName: v.gymName, city: v.city, ownerName: v.ownerName, logo: migrateLogoPicker.get() || "" });
+      var ok = false;
+      try { ok = D.replaceState(legacy); } catch (err) { ok = false; }
+      var verified = false;
+      if (ok) {
+        var back = null;
+        try { back = D.readRaw(); } catch (err) { back = null; }
+        if (back && Array.isArray(back.members) && Array.isArray(back.plans) && back.settings &&
+            back.members.length === (legacy.members || []).length &&
+            back.plans.length === (legacy.plans || []).length &&
+            back.settings.gymName === (legacy.settings && legacy.settings.gymName)) verified = true;
+      }
+      if (!verified) {
+        setBusy(f, false);
+        showAuthErr("migrateErr", "Data copy verify nahi hua — purana data safe hai, dobara try karo.");
+        return;
+      }
+      try { window.GymAuth.clearLegacy(); } catch (err) {}
+      enterApp(account);
+    });
+  });
+
+  /* ----- LOGOUT: sirf session clear — data delete NAHI hota ----- */
+  on("logoutBtn", "click", function () {
+    try { window.GymAuth.logout(); } catch (e) {}
+    currentMemberId = null;
+    ["loginForm", "signupForm", "migrateForm"].forEach(function (id) {
+      var form = $(id);
+      if (form) form.reset();
+    });
+    showAuthErr("loginErr", "");
+    showAuthErr("signupErr", "");
+    showAuthErr("migrateErr", "");
+    showAuth("login");
+  });
 
   /* ---------- Selects ---------- */
   function fillSelects() {
@@ -803,7 +1064,11 @@
       sf.elements["gymName"].value = s.gymName;
       sf.elements["ownerName"].value = s.ownerName || "";
       sf.elements["city"].value = s.city || "";
+      if (typeof settingsLogoPicker !== "undefined" && settingsLogoPicker) settingsLogoPicker.set(s.logo || "");
     }
+    var acct = null;
+    try { acct = window.GymAuth.currentAccount(); } catch (e) { acct = null; }
+    setText("loginEmailLine", acct && acct.email ? "Logged in as: " + acct.email : "");
     var si = D.storageInfo();
     setText("storageInfo", "Storage use: ~" + Math.round(si.bytes / 1024) + " KB • " + si.members + " members • " + si.photos + " photos (" + Math.round(si.photoChars / 1024) + " KB). Storage lagbhag full ho to nayi photo bina save hogi — Export se backup lo.");
   }
@@ -847,7 +1112,12 @@
   on("settingsForm", "submit", function (e) {
     e.preventDefault();
     var f = e.target;
-    D.saveSettings({ gymName: fv(f, "gymName").trim(), ownerName: fv(f, "ownerName").trim(), city: fv(f, "city").trim() });
+    D.saveSettings({ gymName: fv(f, "gymName").trim(), ownerName: fv(f, "ownerName").trim(), city: fv(f, "city").trim(), logo: settingsLogoPicker.get() || "" });
+    // Account profile bhi sync rakho (sidebar/topbar logo + naam wahi se aate hain)
+    try {
+      var s = D.settings();
+      if (window.GymAuth) window.GymAuth.updateProfile({ gymName: s.gymName, city: s.city, ownerName: s.ownerName, logo: s.logo || "" });
+    } catch (err) {}
     applySettings();
     setText("settingsMsg", "Settings saved ✓");
   });
@@ -884,9 +1154,6 @@
     });
   });
 
-  /* ---------- Init ---------- */
-  fillSelects();
-  applySettings();
-  if ($("attDate")) $("attDate").value = D.todayStr();
-  renderSection("home");
+  /* ---------- Init: pehle auth check, phir hi app boot ---------- */
+  boot();
 })();

@@ -49,10 +49,16 @@
   }
   function uid(prefix) { return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36); }
 
-  function seed() {
+  function seed(settings) {
+    var s = settings || {};
     return {
       version: 1,
-      settings: { gymName: "SPARTAN FITNESS", city: "Gopalganj", ownerName: "" },
+      settings: {
+        gymName: (s.gymName || "").trim() || "SPARTAN FITNESS",
+        city: (s.city || "").trim() || "Gopalganj",
+        ownerName: (s.ownerName || "").trim() || "",
+        logo: s.logo || ""
+      },
       members: [],
       plans: [],
       trainers: [],
@@ -93,13 +99,42 @@
   function supabaseFetch() { throw new Error("Supabase not configured yet. Set USE_SUPABASE and fill config.js."); }
   function supabaseSave() { throw new Error("Supabase not configured yet. Set USE_SUPABASE and fill config.js."); }
 
-  var state = loadFromStore();
-  if (!state || state.version !== 1) { state = seed(); saveToStore(state); }
+  // v1.4: NO auto-seed / auto-save at parse time. The data key is per
+  // account and is only chosen once the UI knows who is logged in
+  // (GymData.initForAccount). Until then state stays null and nothing is
+  // written — the legacy gym_live_v1 key is never touched here.
+  var state = loadFromStore() || null;
 
   /* ---------- Public API (only thing app.js uses) ---------- */
   window.GymData = {
     getState: function () { return state; },
     save: function () { if (CFG.USE_SUPABASE) { supabaseSave(state); return true; } return saveToStore(state); },
+    /* v1.4 — per-account data. The UI calls this once, right after login /
+       signup (and after an optional legacy migration), before any other
+       GymData call. KEY switches to the account's own key; state is loaded
+       from it, or seeded (with the account's gym identity) and saved. */
+    initForAccount: function (accountId, seedSettings) {
+      KEY = CFG.ACCOUNT_DATA_PREFIX + accountId;
+      state = loadFromStore();
+      if (!state || state.version !== 1) { state = seed(seedSettings); saveToStore(state); }
+      return state;
+    },
+    /* Replace the whole in-memory state (used by the legacy migration:
+       read the old state, initForAccount, then replaceState(oldState)). */
+    replaceState: function (newState) {
+      state = newState;
+      return saveToStore(state);
+    },
+    /* Re-read the current account key from localStorage (migration
+       verification — proves what is actually on disk, not in memory). */
+    readRaw: function () {
+      try {
+        var raw = localStorage.getItem(KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) { return null; }
+    },
+    currentKey: function () { return KEY; },
     lastSaveError: function () { return lastSaveError; },
     /* Storage accounting (chars of stored JSON — the localStorage budget).
        Photos are base64 data URLs, so photoChars dominates once photos exist. */
@@ -121,6 +156,7 @@
       state.settings.gymName = (o.gymName || "").trim() || "SPARTAN FITNESS";
       state.settings.city = (o.city || "").trim();
       state.settings.ownerName = (o.ownerName || "").trim();
+      if (o.logo !== undefined) state.settings.logo = o.logo; // "" = remove logo
       this.save();
       return state.settings;
     },

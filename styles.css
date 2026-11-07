@@ -435,6 +435,40 @@ td.empty-cell { text-align: center; padding: 20px 10px; }
   }
 }
 
+/* ---------- Auth screen (v1.4): login / signup / migration ---------- */
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background:
+    radial-gradient(560px 220px at 85% -10%, rgba(255, 90, 31, 0.35), transparent 62%),
+    linear-gradient(160deg, #1a1d24 0%, #111318 55%, #191009 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+.auth-card { background: var(--card); border-radius: 18px; max-width: 420px; width: 100%; padding: 24px 22px; box-shadow: var(--shadow-lg); margin: auto; }
+.auth-brand { text-align: center; margin-bottom: 16px; }
+.auth-brand img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.auth-brand h1 { font-size: 28px; margin: 8px 0 4px; }
+.auth-brand p { margin: 0; color: var(--muted); font-size: 14px; }
+.auth-form .pw-wrap { position: relative; }
+.auth-form .pw-wrap input { padding-right: 48px; }
+.auth-form .btn[type="submit"] { width: 100%; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: 0; font-size: 18px; min-height: 44px; padding: 8px; line-height: 1; }
+.link-btn { background: none; border: 0; color: var(--orange-dark); font-weight: 700; text-decoration: underline; padding: 0; font-size: inherit; }
+.auth-err { color: var(--red); font-size: 13.5px; font-weight: 600; margin: 0; }
+.auth-switch { margin: 4px 0 0; text-align: center; }
+/* Gym logo — sidebar + topbar, gol dikhe */
+.top-logo { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.brand img { border-radius: 50%; object-fit: cover; }
+@media (max-width: 1024px) {
+  .auth-card { padding: 20px 16px; }
+  .auth-brand h1 { font-size: 24px; }
+}
+
 /* ---------- Print: receipt only ---------- */
 @media print {
   .sidebar, .topbar, .bottom-nav, .toolbar, .btn, .tabs { display: none !important; }

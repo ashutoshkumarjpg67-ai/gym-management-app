@@ -16,6 +16,7 @@ signal-orange accent. Phone-first (bottom tab bar on mobile). **No navy-gold**
 | `index.html` | All sections, sidebar (PC) + bottom tab bar (mobile) |
 | `styles.css` | Athletic theme, responsive PC + mobile, self-hosted fonts |
 | `fonts/*.woff2` | Barlow + Barlow Condensed (Latin), self-hosted — no Google Fonts CDN |
+| `auth.js` | Login/signup/migration — accounts, SHA-256 + salt passwords, session, legacy migration |
 | `config.js` | Central config — Supabase URL/key placeholders, `USE_SUPABASE: false` |
 | `data.js` | Data layer + EMPTY seed. app.js only calls `GymData.*` |
 | `app.js` | UI only — navigation, members, fees, receipt, attendance |
@@ -40,7 +41,14 @@ signal-orange accent. Phone-first (bottom tab bar on mobile). **No navy-gold**
 - Attendance: date picker, search, Mark All Present, Save, Present/Absent toggles
 - More: Plans, Trainers, Notices, Gym Settings (name/owner/city),
   Data — Export (JSON download) / Import / Reset
-- Data persists in the browser via `localStorage` (`gym_live_v1`).
+- **Login (v1.4):** Gmail + password login/signup on the device — each gym its
+  own account (own name/logo, separate data). Passwords are never stored in
+  plaintext (SHA-256 hash + per-account random salt). Old SPARTAN FITNESS data
+  is migrated into a new account on first login (verified copy, legacy kept
+  until the copy is verified). Logout in More → Settings — data stays.
+- Data persists in the browser via `localStorage` — accounts in `gym_auth_v1`,
+  session in `gym_session_v1`, each gym's data in its own `gym_live_<accountId>`
+  key (legacy key `gym_live_v1` is only read once for migration).
 - The app starts EMPTY — no sample members/plans/fees. Real data only.
 
 ## How the gym will use it (live version)
@@ -53,7 +61,8 @@ signal-orange accent. Phone-first (bottom tab bar on mobile). **No navy-gold**
 4. Share that link with the gym owner. Open in Chrome (PC or phone) →
    "Add to Home Screen" / "Install app" installs it like an app.
 5. Owner adds plans, trainers and members. Each gym gets its own account
-   (Step 2, Supabase) — data never mixes between gyms.
+   (device-level login, v1.4) — data never mixes between gyms. Cross-device
+   sync comes with Step 2 (Supabase).
 
 ## Step 2 — Supabase (later, when ready)
 
@@ -72,13 +81,14 @@ signal-orange accent. Phone-first (bottom tab bar on mobile). **No navy-gold**
 cd ~/workspace/gym-live
 python3 -m http.server 8000
 # open http://127.0.0.1:8000/ in a browser
-node --check app.js && node --check data.js && node --check config.js
+node --check app.js && node --check data.js && node --check config.js && node --check auth.js && node --check sw.js
 ```
 
 ## Known limits (Step 1)
 
-- No real login/auth yet — one gym account in this build. Real auth +
-  multi-gym accounts come with Supabase (Step 2).
+- Login is **device-level only** — the same Gmail will NOT log in on another
+  phone until Supabase (Step 2) adds server accounts. Each device keeps its
+  own accounts and data.
 - Data lives in each browser's localStorage — it does not sync between
   devices yet. Export/Import (More → Data) is the Step 1 backup route.
 - No payment gateway — Cash/UPI/Other is recorded manually at collection.

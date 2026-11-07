@@ -5,17 +5,91 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=5">
+<link rel="manifest" href="manifest.json?v=6">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
-<div class="app">
+<!-- ============ AUTH SCREEN (v1.4) — login se pehle sirf ye dikhta hai ============ -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <img src="icon.svg" alt="Gym Management App logo">
+      <h1>Gym Management App</h1>
+      <p>Har gym ka apna account — members, fees, attendance, ek jagah.</p>
+    </div>
+
+    <!-- LOGIN -->
+    <form class="form auth-form" id="loginForm">
+      <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
+      <div class="full"><label>Password *</label><div class="pw-wrap"><input type="password" id="loginPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Password"><button type="button" class="pw-eye" data-target="loginPassword" aria-label="Password dikhao ya chhupao">👁</button></div></div>
+      <p class="auth-err full" id="loginErr" hidden></p>
+      <div class="full"><button class="btn" type="submit">Login</button></div>
+      <p class="muted full auth-switch">Naya gym account banao? <button type="button" class="link-btn" id="toSignup">Sign up karo</button></p>
+    </form>
+
+    <!-- SIGNUP -->
+    <form class="form auth-form" id="signupForm" hidden>
+      <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
+      <div class="full"><label>Password *</label><input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Kam se kam 6 characters"></div>
+      <div class="full"><label>Confirm Password *</label><input type="password" id="signupConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Password dobara likho"></div>
+      <div class="full"><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
+      <div class="full"><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
+      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+      <div class="full photo-block">
+        <label>Gym Logo (optional)</label>
+        <div class="photo-picker">
+          <div class="photo-preview" id="suLogoPreview"><span>?</span></div>
+          <div class="photo-actions">
+            <button class="btn secondary" type="button" id="suLogoCameraBtn">📷 Logo lo</button>
+            <button class="btn secondary" type="button" id="suLogoGalleryBtn">🖼️ Gallery se chuno</button>
+            <button class="btn ghost" type="button" id="suLogoRemoveBtn" hidden>Hatao</button>
+          </div>
+        </div>
+        <input type="file" id="suLogoCameraInput" accept="image/*" capture="environment" hidden>
+        <input type="file" id="suLogoGalleryInput" accept="image/*" hidden>
+        <p class="muted photo-status" id="suLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+      </div>
+      <p class="auth-err full" id="signupErr" hidden></p>
+      <div class="full"><button class="btn" type="submit">Account banao</button></div>
+      <p class="muted full auth-switch">Pehle se account hai? <button type="button" class="link-btn" id="toLogin">Login karo</button></p>
+    </form>
+
+    <!-- MIGRATION (purana data naye account me) -->
+    <form class="form auth-form" id="migrateForm" hidden>
+      <p class="muted full" id="migrateInfo"></p>
+      <div class="full"><label>Gmail *</label><input type="email" name="email" required autocomplete="username" placeholder="you@gmail.com"></div>
+      <div class="full"><label>Password *</label><input type="password" id="migratePassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Kam se kam 6 characters"></div>
+      <div class="full"><label>Confirm Password *</label><input type="password" id="migrateConfirm" name="confirm" required minlength="6" autocomplete="new-password" placeholder="Password dobara likho"></div>
+      <div class="full"><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
+      <div class="full"><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
+      <div class="full"><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+      <div class="full photo-block">
+        <label>Gym Logo (optional)</label>
+        <div class="photo-picker">
+          <div class="photo-preview" id="migLogoPreview"><span>?</span></div>
+          <div class="photo-actions">
+            <button class="btn secondary" type="button" id="migLogoCameraBtn">📷 Logo lo</button>
+            <button class="btn secondary" type="button" id="migLogoGalleryBtn">🖼️ Gallery se chuno</button>
+            <button class="btn ghost" type="button" id="migLogoRemoveBtn" hidden>Hatao</button>
+          </div>
+        </div>
+        <input type="file" id="migLogoCameraInput" accept="image/*" capture="environment" hidden>
+        <input type="file" id="migLogoGalleryInput" accept="image/*" hidden>
+        <p class="muted photo-status" id="migLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+      </div>
+      <p class="auth-err full" id="migrateErr" hidden></p>
+      <div class="full"><button class="btn" type="submit">Account banao aur purana data lao</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="app" hidden>
   <!-- ============ SIDEBAR (PC) ============ -->
   <aside class="sidebar" aria-label="Main navigation">
     <div class="brand">
-      <img src="icon.svg" alt="Gym Management App logo">
+      <img id="gymLogoSide" src="icon.svg" alt="Gym Management App logo">
       <div><div class="name">Gym Management App</div><div class="sub">SPARTAN FITNESS • Gopalganj</div></div>
     </div>
     <div class="school-chip"><b id="gymNameSide">SPARTAN FITNESS</b><span id="gymCitySide">Gopalganj</span></div>
@@ -35,6 +109,7 @@
     <header class="topbar">
       <h1 id="topTitle">Home</h1>
       <div class="spacer"></div>
+      <img id="gymLogoTop" class="top-logo" src="icon.svg" alt="">
       <span id="gymNameTop">SPARTAN FITNESS</span>
     </header>
 
@@ -225,9 +300,25 @@
             <div><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
             <div><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
             <div><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
+            <div class="full photo-block">
+              <label>Gym Logo (optional)</label>
+              <div class="photo-picker">
+                <div class="photo-preview" id="setLogoPreview"><span>?</span></div>
+                <div class="photo-actions">
+                  <button class="btn secondary" type="button" id="setLogoCameraBtn">📷 Logo lo</button>
+                  <button class="btn secondary" type="button" id="setLogoGalleryBtn">🖼️ Gallery se chuno</button>
+                  <button class="btn ghost" type="button" id="setLogoRemoveBtn" hidden>Hatao</button>
+                </div>
+              </div>
+              <input type="file" id="setLogoCameraInput" accept="image/*" capture="environment" hidden>
+              <input type="file" id="setLogoGalleryInput" accept="image/*" hidden>
+              <p class="muted photo-status" id="setLogoStatus">Logo automatic compress hokar save hoga (~50KB).</p>
+            </div>
             <div class="full"><button class="btn" type="submit">Save Settings</button></div>
           </form>
           <p class="muted" id="settingsMsg"></p>
+          <p class="muted" id="loginEmailLine"></p>
+          <button class="btn secondary" type="button" id="logoutBtn">Logout</button>
         </div>
 
         <div class="card"><h3>Data</h3>
@@ -247,7 +338,7 @@
 </div>
 
 <!-- Fixed bottom tab bar (mobile) -->
-<nav class="bottom-nav" id="bottomNav" aria-label="Sections">
+<nav class="bottom-nav" id="bottomNav" aria-label="Sections" hidden>
   <button data-nav="home" class="active"><span class="ic">▦</span><span>Home</span></button>
   <button data-nav="members"><span class="ic">👥</span><span>Members</span></button>
   <button data-nav="fees"><span class="ic">₹</span><span>Fees</span></button>
@@ -288,9 +379,10 @@
   </div>
 </div>
 
-<script src="config.js?v=5"></script>
-<script src="data.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="auth.js?v=6"></script>
+<script src="data.js?v=6"></script>
+<script src="app.js?v=6"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
