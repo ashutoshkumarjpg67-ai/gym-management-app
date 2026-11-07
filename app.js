@@ -24,6 +24,31 @@
   function digitsOnly(phone) { return String(phone || "").replace(/\D/g, ""); }
   function waLink(phone, text) { return "https://wa.me/" + digitsOnly(phone) + "?text=" + encodeURIComponent(text); }
 
+  var REDUCED = false;
+  try { REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+  /* Number count-up: Home stats 0 se final value tak smoothly badhein.
+     Sirf visual hai — data same rehta hai. Reduced-motion ya bina-rAF
+     environment par seedha final value (jsdom-safe). */
+  function animateNum(el, to, format) {
+    if (!el) return;
+    if (REDUCED || !window.requestAnimationFrame) { el.textContent = format(to); return; }
+    var start = null, dur = 450;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var e = 1 - Math.pow(1 - p, 3);
+      el.textContent = format(Math.round(to * e));
+      if (p < 1) window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
+  }
+  /* Rich empty state: icon + title + hint + optional action button */
+  function emptyHTML(icon, title, sub, btn) {
+    var b = btn ? "<button class='btn small' id='" + btn.id + "'>" + esc(btn.label) + "</button>" : "";
+    return "<div class='empty rich'><div class='empty-ic'>" + icon + "</div><div class='empty-t'>" + esc(title) + "</div><div class='empty-s'>" + esc(sub) + "</div>" + b + "</div>";
+  }
+  function wireEmptyBtn(id, fn) { var b = document.getElementById(id); if (b) b.addEventListener("click", fn); }
+
   var currentSection = "home";
   var feeTab = "records";
   var feeMonth = D.todayStr().slice(0, 7);
@@ -110,10 +135,10 @@
   /* ---------- Home ---------- */
   function renderHome() {
     var pt = D.presentToday();
-    setText("statCollected", inr(D.collectedToday()));
-    setText("statPresent", pt.present + " / " + pt.total);
-    setText("statActive", String(D.membersList("active").length));
-    setText("statDue", inr(D.feeTotals("All").due));
+    animateNum($("statCollected"), D.collectedToday(), inr);
+    animateNum($("statPresent"), pt.present, function (v) { return v + " / " + pt.total; });
+    animateNum($("statActive"), D.membersList("active").length, function (v) { return String(v); });
+    animateNum($("statDue"), D.feeTotals("All").due, inr);
 
     var exp = D.expiringSoon(7);
     var defs = D.defaulters();
@@ -125,12 +150,12 @@
       var name = d.member ? d.member.name : "";
       att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(name) + "</div><div class='s'>Fees due — " + inr(d.due) + "</div></div><span class='badge due'>Due</span></div>";
     });
-    setHTML("attentionList", att || "<p class='muted'>Sab theek hai — koi expiring plan ya due fees nahi hai.</p>");
+    setHTML("attentionList", att || emptyHTML("✅", "Sab theek hai", "Koi expiring plan ya due fees nahi hai."));
 
     var pays = D.paymentsRecent(10);
     setHTML("recentPayments", pays.map(function (p) {
       return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.member) + "</div><div class='s'>" + esc(p.method || "Cash") + " • " + D.fmtDate(p.date) + "</div></div><b>" + inr(p.amount) + "</b></div>";
-    }).join("") || "<p class='muted'>Abhi tak koi payment nahi hui hai.</p>");
+    }).join("") || emptyHTML("🧾", "No payments yet", "Pehli payment collect karte hi yahan dikhegi."));
   }
 
   /* ---------- Members ---------- */
@@ -147,11 +172,12 @@
       return "<tr data-member='" + m.id + "'><td><span class='avatar'>" + esc(initials(m.name)) + "</span> " + esc(m.name) + "</td>" +
         "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + esc(trainerName(m.trainerId)) + "</td>" +
         "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
-    }).join("") || "<tr><td colspan='6' class='muted'>No members yet — Add Member se shuru karo.</td></tr>");
+    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
     var rowsEl = $("memberRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-member]").forEach(function (r) {
       r.addEventListener("click", function () { openMember(r.getAttribute("data-member")); });
     });
+    wireEmptyBtn("emptyAddMember", function () { var b = $("newMemberBtn"); if (b) b.click(); });
   }
   on("memberSearch", "input", renderMembers);
   on("memberTrainerFilter", "change", renderMembers);
@@ -182,14 +208,14 @@
     var fees = D.feesFor("All", "All").filter(function (f) { return f.memberId === id; });
     setHTML("memberFeeRows", fees.map(function (f) {
       return "<tr><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + "</td><td>" + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td></tr>";
-    }).join("") || "<tr><td colspan='6' class='muted'>Is member ki koi fee record nahi hai.</td></tr>");
+    }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "Is member ki koi fee record nahi hai.") + "</td></tr>");
 
     var attMap = D.getState().attendance || {};
     var dates = Object.keys(attMap).sort().reverse().slice(0, 7);
     setHTML("memberAttRecent", dates.map(function (d) {
       var v = attMap[d][id];
       return "<div class='list-row'><div class='grow'><div class='t'>" + D.fmtDate(d) + "</div></div><span class='badge " + (v === "Present" ? "paid" : v === "Absent" ? "due" : "info") + "'>" + esc(v || "—") + "</span></div>";
-    }).join("") || "<p class='muted'>Abhi tak koi attendance nahi hai.</p>");
+    }).join("") || emptyHTML("✓", "No attendance yet", "Attendance mark karte hi yahan dikhegi."));
 
     // Assign plan
     var sel = $("assignPlanSelect");
@@ -335,7 +361,7 @@
           ? "<a class='btn small' href='" + esc(waLink(phone, text)) + "' target='_blank' rel='noopener'>WhatsApp</a>"
           : "<button class='btn small' disabled title='Phone nahi hai'>WhatsApp</button>";
         return "<tr><td>" + esc(name) + "</td><td>" + d.fees.length + " fee record(s)</td><td>" + inr(d.due) + "</td><td>—</td><td>" + inr(d.due) + "</td><td><span class='badge due'>Due</span></td><td>" + waBtn + "</td></tr>";
-      }).join("") || "<tr><td colspan='7' class='muted'>Koi defaulter nahi hai — sab fees paid hain.</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("✅", "No defaulters", "Koi defaulter nahi hai — sab fees paid hain.") + "</td></tr>";
     } else {
       var list = D.feesFor(feeMonth, "All");
       if (feeTab === "paid") list = list.filter(function (f) { return f.status === "Paid"; });
@@ -343,7 +369,7 @@
       html = list.map(function (f) {
         return "<tr><td>" + esc(f.member) + "</td><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td>" +
           "<td>" + (f.due > 0 ? "<button class='btn small' data-pay='" + f.id + "'>Collect</button>" : "") + "</td></tr>";
-      }).join("") || "<tr><td colspan='7' class='muted'>No fee records for this filter.</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='empty-cell'>" + emptyHTML("🧾", "No fee records", "Is filter ke liye koi fee record nahi hai.") + "</td></tr>";
     }
     setHTML("feeRows", html);
     var rowsEl = $("feeRows");
@@ -438,7 +464,7 @@
     setHTML("expenseRows", list.map(function (e) {
       return "<tr><td>" + esc(e.title) + "</td><td>" + D.fmtDate(e.date) + "</td><td>" + inr(e.amount) + "</td><td><span class='badge " + (e.status === "Paid" ? "paid" : "due") + "'>" + esc(e.status || "Paid") + "</span></td>" +
         "<td><button class='btn small danger' data-exp='" + e.id + "'>Delete</button></td></tr>";
-    }).join("") || "<tr><td colspan='5' class='muted'>No expenses yet.</td></tr>");
+    }).join("") || "<tr><td colspan='5' class='empty-cell'>" + emptyHTML("💸", "No expenses yet", "Add Expense se pehla kharcha add karo.") + "</td></tr>");
     setText("expenseTotal", inr(D.expenseTotal()));
     var rowsEl = $("expenseRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-exp]").forEach(function (b) {
@@ -481,11 +507,12 @@
       return "<div class='att-row'><span class='avatar'>" + esc(initials(m.name)) + "</span><div class='grow'><b>" + esc(m.name) + "</b><div class='muted'>" + esc(m.phone || "") + "</div></div>" +
         "<span class='seg'><button type='button' data-att='" + m.id + "' data-v='Present' class='" + (attWorking[m.id] === "Present" ? "on-p" : "") + "'>Present</button>" +
         "<button type='button' data-att='" + m.id + "' data-v='Absent' class='" + (attWorking[m.id] === "Absent" ? "on-a" : "") + "'>Absent</button></span></div>";
-    }).join("") || "<p class='muted'>No members yet — Add Member se shuru karo.</p>");
+    }).join("") || emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMemberAtt", label: "+ Add Member" }));
     var listEl = $("attList");
     if (listEl) listEl.querySelectorAll("[data-att]").forEach(function (b) {
       b.addEventListener("click", function () { attWorking[b.getAttribute("data-att")] = b.getAttribute("data-v"); renderAttendance(); });
     });
+    wireEmptyBtn("emptyAddMemberAtt", function () { showSection("members"); var b = $("newMemberBtn"); if (b) b.click(); });
   }
   on("attDate", "change", function () { attWorking = {}; renderAttendance(); });
   on("attSearch", "input", renderAttendance);
@@ -506,14 +533,14 @@
     setHTML("planRows", D.plansList().map(function (p) {
       return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.name) + "</div><div class='s'>" + p.days + " days • " + inr(p.price) + "</div></div>" +
         "<button class='btn small secondary' data-plan-edit='" + p.id + "'>Edit</button> <button class='btn small danger' data-plan-del='" + p.id + "'>Delete</button></div>";
-    }).join("") || "<p class='muted'>No plans yet — pehle ek membership plan banao.</p>");
+    }).join("") || emptyHTML("📋", "No plans yet", "Pehle ek membership plan banao.", { id: "emptyAddPlan", label: "+ Add Plan" }));
     setHTML("trainerRows", D.trainersList().map(function (t) {
       return "<div class='list-row'><span class='avatar'>" + esc(initials(t.name)) + "</span><div class='grow'><div class='t'>" + esc(t.name) + "</div><div class='s'>" + esc(t.specialty || "") + (t.phone ? " • " + esc(t.phone) : "") + "</div></div>" +
         "<button class='btn small secondary' data-trainer-edit='" + t.id + "'>Edit</button> <button class='btn small danger' data-trainer-del='" + t.id + "'>Delete</button></div>";
-    }).join("") || "<p class='muted'>No trainers yet.</p>");
+    }).join("") || emptyHTML("💪", "No trainers yet", "Pehla trainer add karo.", { id: "emptyAddTrainer", label: "+ Add Trainer" }));
     setHTML("noticeList", D.getState().notices.map(function (n) {
       return "<div class='card'><div class='list-row'><div class='grow'><div class='t'>" + esc(n.title) + "</div><div>" + esc(n.body) + "</div><div class='s'>" + D.fmtDate(n.date) + (n.tag ? " • " + esc(n.tag) : "") + "</div></div><button class='btn small danger' data-notice-del='" + n.id + "'>Delete</button></div></div>";
-    }).join("") || "<p class='muted'>No notices yet.</p>");
+    }).join("") || emptyHTML("📢", "No notices yet", "Pehla notice publish karo."));
 
     var pr = $("planRows");
     if (pr) {
@@ -566,6 +593,8 @@
         renderMore();
       });
     });
+    wireEmptyBtn("emptyAddPlan", function () { var f = $("planForm"); if (f) { scrollToEl(f); var n = f.elements ? f.elements["name"] : null; if (n) n.focus(); } });
+    wireEmptyBtn("emptyAddTrainer", function () { var f = $("trainerForm"); if (f) { scrollToEl(f); var n = f.elements ? f.elements["name"] : null; if (n) n.focus(); } });
     var sf = $("settingsForm");
     if (sf) {
       var s = D.settings();

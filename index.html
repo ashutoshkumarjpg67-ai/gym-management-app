@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=2">
+<link rel="manifest" href="manifest.json?v=3">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 <div class="app">
@@ -151,7 +151,7 @@
             <div><label>Status</label><select name="status"><option>Paid</option><option>Due</option></select></div>
             <div class="full"><button class="btn" type="submit">Save Expense</button></div>
           </form>
-          <div id="expenseRows"></div>
+          <div class="table-wrap"><table><thead><tr><th>Expense</th><th>Date</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
         </div>
       </section>
 
@@ -257,9 +257,9 @@
   </div>
 </div>
 
-<script src="config.js?v=2"></script>
-<script src="data.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="data.js?v=3"></script>
+<script src="app.js?v=3"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
