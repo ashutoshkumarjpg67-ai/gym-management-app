@@ -67,6 +67,7 @@
   }
 
   /* ---------- Store (localStorage in Step 1) ---------- */
+  var lastSaveError = null; // null | "quota" | "error" — app.js checks this after saves
   function loadFromStore() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -75,7 +76,17 @@
     } catch (e) { return null; }
   }
   function saveToStore(state) {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage full/blocked */ }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      lastSaveError = null;
+      return true;
+    } catch (e) {
+      // QuotaExceededError: phone storage full (big risk once member photos
+      // are stored). Callers must check lastSaveError() and degrade
+      // gracefully (e.g. save the member without the photo) — never crash.
+      lastSaveError = (e && e.name === "QuotaExceededError") ? "quota" : "error";
+      return false;
+    }
   }
   // Step 2 stubs — fill these in when Supabase is connected. app.js does
   // not call them directly; it calls the public functions below.
@@ -88,7 +99,17 @@
   /* ---------- Public API (only thing app.js uses) ---------- */
   window.GymData = {
     getState: function () { return state; },
-    save: function () { if (CFG.USE_SUPABASE) { supabaseSave(state); } else { saveToStore(state); } },
+    save: function () { if (CFG.USE_SUPABASE) { supabaseSave(state); return true; } return saveToStore(state); },
+    lastSaveError: function () { return lastSaveError; },
+    /* Storage accounting (chars of stored JSON — the localStorage budget).
+       Photos are base64 data URLs, so photoChars dominates once photos exist. */
+    storageInfo: function () {
+      var json = "";
+      try { json = JSON.stringify(state); } catch (e) {}
+      var photos = 0, photoChars = 0;
+      state.members.forEach(function (m) { if (m.photo) { photos++; photoChars += String(m.photo).length; } });
+      return { bytes: json.length, members: state.members.length, photos: photos, photoChars: photoChars };
+    },
     resetAll: function () { state = seed(); this.save(); return state; },
     todayStr: todayStr,
     fmtDate: fmtDate,
@@ -134,6 +155,16 @@
       m.status = "archived";
       this.save();
       return true;
+    },
+    /* Full remove — only used to roll back a member whose save failed
+       (e.g. storage full even without a photo), so a half-saved member
+       never appears in the list and vanishes on reload. */
+    removeMember: function (id) {
+      var before = state.members.length;
+      state.members = state.members.filter(function (m) { return m.id !== id; });
+      delete state.extras[id];
+      if (state.members.length !== before) this.save();
+      return state.members.length !== before;
     },
 
     /* ----- Plans ----- */
@@ -357,7 +388,9 @@
         if (!data || data.version !== 1 || !data.settings || !Array.isArray(data.members)) return false;
         state = data;
         this.save();
-        return true;
+        // A huge backup (e.g. many photos) can exceed localStorage — then
+        // the import must report failure, not pretend it worked.
+        return this.lastSaveError() ? false : true;
       } catch (e) { return false; }
     }
   };

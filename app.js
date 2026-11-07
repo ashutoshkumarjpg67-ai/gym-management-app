@@ -49,6 +49,76 @@
   }
   function wireEmptyBtn(id, fn) { var b = document.getElementById(id); if (b) b.addEventListener("click", fn); }
 
+  /* ---------- Member photo ----------
+     Admission ke time photo li jati hai aur client-side canvas par
+     compress hokar member record me data URL ke roop me save hoti hai.
+     localStorage ~5MB ka hota hai, isliye photo chhoti rakhna zaroori hai:
+     max side 512px, JPEG q0.7 (~30-80KB). Badi nikli to retry chhota. */
+  var PHOTO_MAX_CHARS = 110000; // data-URL chars ≈ 82KB binary
+  // Stored-JSON ka safe budget (chars). Chrome/Android localStorage quota
+  // ~5MB hai aur har character ~2 bytes gina jata hai (UTF-16), isliye
+  // hard cap ~2.6M chars hota hai — guard 2.0M par rakha hai taaki quota
+  // error aane se pehle hi nayi photo bina save ho (admission kabhi fail na ho).
+  var STORAGE_SAFE_CHARS = 2000000;
+  function photoTargetSize(w, h, maxSide) {
+    if (!w || !h) return { w: 0, h: 0 };
+    var s = Math.min(1, maxSide / Math.max(w, h));
+    return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)) };
+  }
+  function loadBitmap(file) {
+    // Phone photo ki orientation: createImageBitmap with
+    // imageOrientation:'from-image' EXIF rotation fix karta hai (Chrome/Android).
+    // Na mile to plain createImageBitmap, phir Image + object URL fallback.
+    if (typeof createImageBitmap === "function") {
+      return createImageBitmap(file, { imageOrientation: "from-image" }).catch(function () {
+        return createImageBitmap(file);
+      });
+    }
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("img load failed")); };
+      img.src = url;
+    });
+  }
+  function drawToJpeg(bmp, maxSide, quality) {
+    try {
+      var c = document.createElement("canvas");
+      var t = photoTargetSize(bmp.width, bmp.height, maxSide);
+      c.width = t.w; c.height = t.h;
+      var ctx = c.getContext("2d");
+      if (!ctx) return null; // canvas unavailable (old browser / jsdom) — no photo
+      ctx.drawImage(bmp, 0, 0, t.w, t.h);
+      var url = c.toDataURL("image/jpeg", quality);
+      return (url && url.indexOf("data:image/jpeg") === 0) ? url : null;
+    } catch (e) { return null; }
+  }
+  function compressPhoto(file) {
+    return new Promise(function (resolve) {
+      if (!file || !file.type || file.type.indexOf("image/") !== 0) { resolve(null); return; }
+      var done = false;
+      var finish = function (v) { if (!done) { done = true; resolve(v); } };
+      setTimeout(function () { finish(null); }, 8000); // safety: kabhi hang na ho
+      loadBitmap(file).then(function (bmp) {
+        if (!bmp) { finish(null); return; }
+        var url = drawToJpeg(bmp, 512, 0.7);
+        if (!url) { finish(null); return; }
+        if (url.length > PHOTO_MAX_CHARS) url = drawToJpeg(bmp, 384, 0.6) || url;
+        if (url.length > PHOTO_MAX_CHARS) { var u2 = drawToJpeg(bmp, 256, 0.55); if (u2) url = u2; }
+        finish(url);
+      }).catch(function () { finish(null); });
+    });
+  }
+  // Test hook (compression logic ko jsdom se test karne ke liye).
+  window.GymPhoto = { compressPhoto: compressPhoto, targetSize: photoTargetSize, MAX_CHARS: PHOTO_MAX_CHARS, SAFE_CHARS: STORAGE_SAFE_CHARS };
+  /* Avatar: photo ho to gol photo, nahi to pehle jaisa initials avatar */
+  function avatarHTML(m, lg) {
+    var cls = "avatar" + (lg ? " lg" : "");
+    if (m && m.photo) return "<span class='" + cls + "'><img src='" + esc(m.photo) + "' alt=''></span>";
+    return "<span class='" + cls + "'>" + esc(initials(m ? m.name : "")) + "</span>";
+  }
+
   var currentSection = "home";
   var feeTab = "records";
   var feeMonth = D.todayStr().slice(0, 7);
@@ -169,7 +239,7 @@
     });
     setHTML("memberRows", list.map(function (m) {
       var ap = D.activePlanFor(m.id);
-      return "<tr data-member='" + m.id + "'><td><span class='avatar'>" + esc(initials(m.name)) + "</span> " + esc(m.name) + "</td>" +
+      return "<tr data-member='" + m.id + "'><td>" + avatarHTML(m) + " " + esc(m.name) + "</td>" +
         "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + esc(trainerName(m.trainerId)) + "</td>" +
         "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
     }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
@@ -199,7 +269,7 @@
     var ap = D.activePlanFor(id);
     currentMpId = ap ? ap.id : null;
     setHTML("memberProfile",
-      "<div class='list-row'><span class='avatar'>" + esc(initials(m.name)) + "</span><div class='grow'><div class='t'>" + esc(m.name) + "</div><div class='s'>Joined " + D.fmtDate(m.joinDate) + " • " + esc(m.status || "active") + "</div></div></div>" +
+      "<div class='list-row'>" + avatarHTML(m, true) + "<div class='grow'><div class='t'>" + esc(m.name) + "</div><div class='s'>Joined " + D.fmtDate(m.joinDate) + " • " + esc(m.status || "active") + "</div></div></div>" +
       "<div class='kv'><dt>Age</dt><dd>" + (m.age || "—") + "</dd><dt>Phone</dt><dd>" + esc(m.phone || "—") + "</dd><dt>Gender</dt><dd>" + esc(m.gender || "—") + "</dd><dt>Weight</dt><dd>" + (m.weight ? esc(m.weight) + " kg" : "—") + "</dd><dt>Goal</dt><dd>" + esc(m.goal || "—") + "</dd><dt>Trainer</dt><dd>" + esc(trainerName(m.trainerId)) + "</dd></div>");
     var ex = D.extrasFor(id);
     if ($("dietText")) $("dietText").value = ex.diet || "";
@@ -260,6 +330,9 @@
     f.elements["joinDate"].value = m.joinDate || D.todayStr();
     setText("memberFormTitle", "Edit Member");
     if ($("memberIdField")) $("memberIdField").value = m.id;
+    pendingPhoto = m.photo || null;
+    setText("photoStatus", pendingPhoto ? "Photo saved hai — badalne ke liye nayi photo lo ya hatao." : PHOTO_STATUS_DEFAULT);
+    setPhotoPreview();
     setText("memberFormTitle", "Edit Member");
     if ($("memberFormCard")) { $("memberFormCard").hidden = false; scrollToEl($("memberFormCard")); }
   });
@@ -288,17 +361,68 @@
       }
       return;
     }
-    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record ban gaya hai (Due).");
     openMember(currentMemberId);
     renderMembers();
+    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record ban gaya hai (Due).");
+    return;
   });
   on("renewPlanBtn", "click", function () {
     if (!currentMpId) return;
     var res = D.renewPlan(currentMpId);
     if (!res.ok) { setText("assignMsg", "Renew nahi hua — plan delete ho gaya hoga. Naya plan assign karo."); return; }
-    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record ban gaya hai (Due).");
     openMember(currentMemberId);
     renderMembers();
+    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record ban gaya hai (Due).");
+  });
+
+  /* ---------- Member photo picker (admission / edit form) ---------- */
+  var pendingPhoto = null; // compressed JPEG data URL, ya null (koi photo nahi)
+  var PHOTO_STATUS_DEFAULT = "Photo automatic compress hokar save hogi (~50KB), taaki phone storage na bhare.";
+  function setPhotoPreview() {
+    var prev = $("photoPreview");
+    if (!prev) return;
+    if (pendingPhoto) {
+      prev.innerHTML = "<img src='" + esc(pendingPhoto) + "' alt='Member photo'>";
+    } else {
+      var f = $("memberForm");
+      var nm = f && f.elements["name"] ? f.elements["name"].value : "";
+      prev.innerHTML = "<span>" + esc(initials(nm)) + "</span>";
+    }
+    var rm = $("photoRemoveBtn");
+    if (rm) rm.hidden = !pendingPhoto;
+  }
+  function resetPhotoPicker() {
+    pendingPhoto = null;
+    setText("photoStatus", PHOTO_STATUS_DEFAULT);
+    setPhotoPreview();
+  }
+  function handlePhotoFile(file) {
+    if (!file) return;
+    setText("photoStatus", "Photo compress ho rahi hai…");
+    compressPhoto(file).then(function (url) {
+      if (url) {
+        pendingPhoto = url;
+        setText("photoStatus", "Photo ready ✓ ~" + Math.round(url.length / 1024) + "KB — automatic compress hokar save hogi.");
+      } else {
+        pendingPhoto = null;
+        setText("photoStatus", "Photo compress nahi ho payi — bina photo ke admission hoga. Dobara try karo.");
+      }
+      setPhotoPreview();
+    });
+  }
+  function pickPhoto(inputId) { var i = $(inputId); if (i) i.click(); }
+  on("photoCameraBtn", "click", function () { pickPhoto("photoCameraInput"); });
+  on("photoGalleryBtn", "click", function () { pickPhoto("photoGalleryInput"); });
+  on("photoCameraInput", "change", function (e) { handlePhotoFile(e.target.files && e.target.files[0]); e.target.value = ""; });
+  on("photoGalleryInput", "change", function (e) { handlePhotoFile(e.target.files && e.target.files[0]); e.target.value = ""; });
+  on("photoRemoveBtn", "click", function () {
+    pendingPhoto = null;
+    setText("photoStatus", "Photo hata di gayi.");
+    setPhotoPreview();
+  });
+  // Naam type karte hi preview me initials update hon (jab tak photo na ho)
+  on("memberForm", "input", function (e) {
+    if (!pendingPhoto && e.target && e.target.name === "name") setPhotoPreview();
   });
 
   on("newMemberBtn", "click", function () {
@@ -306,17 +430,27 @@
     var f = $("memberForm");
     if (!f) return;
     f.reset();
+    resetPhotoPicker();
     if ($("memberIdField")) $("memberIdField").value = "";
     f.elements["joinDate"].value = D.todayStr();
     setText("memberFormTitle", "Add Member");
     if ($("memberFormCard")) { $("memberFormCard").hidden = false; scrollToEl($("memberFormCard")); }
   });
-  on("memberCancel", "click", function () { if ($("memberFormCard")) $("memberFormCard").hidden = true; });
+  on("memberCancel", "click", function () { if ($("memberFormCard")) $("memberFormCard").hidden = true; resetPhotoPicker(); });
   on("memberForm", "submit", function (e) {
     e.preventDefault();
     var f = e.target;
     var name = fv(f, "name").trim();
     if (!name) return;
+    var id = $("memberIdField") ? $("memberIdField").value : "";
+    var photo = pendingPhoto || "";
+    var photoDropped = false;
+    // Proactive guard: photo se stored JSON safe budget (~4MB) paar ho jaye
+    // to photo ke bina save karo — quota error ka wait mat karo.
+    if (photo) {
+      var info = D.storageInfo();
+      if (info.bytes + photo.length + 200 > STORAGE_SAFE_CHARS) { photo = ""; photoDropped = true; }
+    }
     var fields = {
       name: name,
       age: parseInt(fv(f, "age"), 10) || "",
@@ -325,15 +459,48 @@
       weight: fv(f, "weight").trim(),
       goal: fv(f, "goal").trim(),
       trainerId: fv(f, "trainerId"),
-      joinDate: fv(f, "joinDate") || D.todayStr()
+      joinDate: fv(f, "joinDate") || D.todayStr(),
+      photo: photo
     };
-    var id = $("memberIdField") ? $("memberIdField").value : "";
-    if (id) D.updateMember(id, fields); else D.addMember(fields);
+    var saved = null;
+    if (id) {
+      var m0 = D.memberById(id);
+      var oldCopy = m0 ? Object.assign({}, m0) : null;
+      saved = D.updateMember(id, fields);
+      if (D.lastSaveError() === "quota") {
+        if (photo) {
+          D.updateMember(id, { photo: "" });
+          if (D.lastSaveError() === "quota") {
+            if (oldCopy && m0) Object.assign(m0, oldCopy);
+            return failQuotaSave();
+          }
+          photoDropped = true;
+        } else {
+          if (oldCopy && m0) Object.assign(m0, oldCopy);
+          return failQuotaSave();
+        }
+      }
+    } else {
+      saved = D.addMember(fields);
+      if (D.lastSaveError() === "quota") {
+        if (photo) {
+          D.updateMember(saved.id, { photo: "" });
+          if (D.lastSaveError() === "quota") { D.removeMember(saved.id); return failQuotaSave(); }
+          photoDropped = true;
+        } else { D.removeMember(saved.id); return failQuotaSave(); }
+      }
+    }
+    if (photoDropped) setText("memberMsg", "⚠️ Storage lagbhag full hai — member photo ke bina save hua. More → Data se Export karke backup lo, phir purana data delete karke dobara photo add kar sakte ho.");
+    else setText("memberMsg", "");
+    pendingPhoto = null;
     if ($("memberFormCard")) $("memberFormCard").hidden = true;
     fillSelects();
     renderMembers(); renderHome();
     if (id) openMember(id);
   });
+  function failQuotaSave() {
+    setText("memberMsg", "⚠️ Storage full ho gaya — save nahi hua. More → Data se Export karke backup lo, phir purana data delete karo aur dobara try karo.");
+  }
 
   /* ---------- Fees ---------- */
   function renderFees() {
@@ -504,7 +671,7 @@
     });
     list.forEach(function (m) { if (!attWorking[m.id]) attWorking[m.id] = saved[m.id] || "Present"; });
     setHTML("attList", list.map(function (m) {
-      return "<div class='att-row'><span class='avatar'>" + esc(initials(m.name)) + "</span><div class='grow'><b>" + esc(m.name) + "</b><div class='muted'>" + esc(m.phone || "") + "</div></div>" +
+      return "<div class='att-row'>" + avatarHTML(m) + "<div class='grow'><b>" + esc(m.name) + "</b><div class='muted'>" + esc(m.phone || "") + "</div></div>" +
         "<span class='seg'><button type='button' data-att='" + m.id + "' data-v='Present' class='" + (attWorking[m.id] === "Present" ? "on-p" : "") + "'>Present</button>" +
         "<button type='button' data-att='" + m.id + "' data-v='Absent' class='" + (attWorking[m.id] === "Absent" ? "on-a" : "") + "'>Absent</button></span></div>";
     }).join("") || emptyHTML("👥", "No members yet", "Add Member se shuru karo.", { id: "emptyAddMemberAtt", label: "+ Add Member" }));
@@ -602,6 +769,8 @@
       sf.elements["ownerName"].value = s.ownerName || "";
       sf.elements["city"].value = s.city || "";
     }
+    var si = D.storageInfo();
+    setText("storageInfo", "Storage use: ~" + Math.round(si.bytes / 1024) + " KB • " + si.members + " members • " + si.photos + " photos (" + Math.round(si.photoChars / 1024) + " KB). Storage lagbhag full ho to nayi photo bina save hogi — Export se backup lo.");
   }
   on("planForm", "submit", function (e) {
     e.preventDefault();
