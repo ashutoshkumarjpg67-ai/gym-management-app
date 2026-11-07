@@ -64,6 +64,11 @@
   --dur: .22s;
 }
 * { box-sizing: border-box; }
+/* `hidden` attribute hamesha jeete — author display rules (jaise
+   .photo-actions .btn { display: block } ya .form { display: grid })
+   use override na karein. Iske bina "Hatao" button photo chunne se
+   pehle bhi dikhta tha, jabki us par hidden laga tha. */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: Barlow, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -404,7 +409,11 @@ td.empty-cell { text-align: center; padding: 20px 10px; }
  * fade+slide; cards staggered fade-up; modal slide-up; backdrop fade. */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sectionIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes cardRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+/* cardRise sirf transform karta hai, opacity nahi — pehle opacity: 0 se
+   shuru hota tha, isliye animation ke dauraan (ya agar animation ruke to)
+   pehli tile blank dikhti thi. Ab tile hamesha dikhti hai, sirf halka
+   sa upar uthti hai. */
+@keyframes cardRise { from { transform: translateY(10px); } to { transform: translateY(0); } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 .section.active { animation: sectionIn .26s var(--ease) both; }

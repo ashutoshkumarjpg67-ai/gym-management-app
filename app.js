@@ -339,11 +339,14 @@
   on("archiveMemberBtn", "click", function () {
     var m = D.memberById(currentMemberId);
     if (!m) return;
-    if (!confirm("Archive " + m.name + "? Ye wapas nahi aayega.")) return;
-    D.archiveMember(m.id);
-    if ($("memberCard")) $("memberCard").hidden = true;
-    currentMemberId = null;
-    renderMembers(); renderHome();
+    askConfirm("Archive member?", m.name + " ko archive kar diya jayega. Ye wapas nahi aayega.", "Yes, archive").then(function (ok) {
+      if (!ok) return;
+      D.archiveMember(m.id);
+      if ($("memberCard")) $("memberCard").hidden = true;
+      currentMemberId = null;
+      renderMembers(); renderHome();
+      setText("memberMsg", "✓ " + m.name + " archived ho gaya.");
+    });
   });
   on("assignPlanBtn", "click", function () {
     if (!currentMemberId) return;
@@ -572,6 +575,30 @@
     renderFees(); renderHome();
   });
 
+  /* ---------- In-app confirmation (native confirm() ki jagah) ----------
+     Native confirm() headless/automated browser me dikhta hi nahi aur
+     false return karta hai — isliye Archive/Delete wahan silently fail
+     ho jate the (4 baar click, kuch nahi). Ye modal har browser me
+     kaam karta hai aur phone par bhi professional dikhta hai. */
+  var confirmResolve = null;
+  function askConfirm(title, message, yesLabel) {
+    setText("confirmTitle", title || "Confirm");
+    setText("confirmMsg", message || "");
+    var yes = $("confirmYes");
+    if (yes) yes.textContent = yesLabel || "Yes";
+    var m = $("confirmModal");
+    if (m) m.classList.add("open");
+    return new Promise(function (resolve) { confirmResolve = resolve; });
+  }
+  function closeConfirm(result) {
+    var m = $("confirmModal");
+    if (m) m.classList.remove("open");
+    if (confirmResolve) { var r = confirmResolve; confirmResolve = null; r(!!result); }
+  }
+  on("confirmYes", "click", function () { closeConfirm(true); });
+  on("confirmNo", "click", function () { closeConfirm(false); });
+  on("confirmModal", "click", function (e) { if (e.target === $("confirmModal")) closeConfirm(false); });
+
   /* ----- Collect payment modal ----- */
   function payWarnUpdate() {
     var f = D.feeById(payFeeId);
@@ -636,9 +663,11 @@
     var rowsEl = $("expenseRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-exp]").forEach(function (b) {
       b.addEventListener("click", function () {
-        if (!confirm("Delete this expense? Ye wapas nahi aayega.")) return;
-        D.deleteExpense(b.getAttribute("data-exp"));
-        renderFees();
+        askConfirm("Delete expense?", "Ye expense delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+          if (!ok) return;
+          D.deleteExpense(b.getAttribute("data-exp"));
+          renderFees();
+        });
       });
     });
   }
@@ -725,9 +754,11 @@
       });
       pr.querySelectorAll("[data-plan-del]").forEach(function (b) {
         b.addEventListener("click", function () {
-          if (!confirm("Delete this plan? Ye wapas nahi aayega.")) return;
-          D.deletePlan(b.getAttribute("data-plan-del"));
-          renderMore();
+          askConfirm("Delete plan?", "Ye plan delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+            if (!ok) return;
+            D.deletePlan(b.getAttribute("data-plan-del"));
+            renderMore();
+          });
         });
       });
     }
@@ -746,18 +777,22 @@
       });
       tr.querySelectorAll("[data-trainer-del]").forEach(function (b) {
         b.addEventListener("click", function () {
-          if (!confirm("Delete this trainer? Ye wapas nahi aayega.")) return;
-          D.deleteTrainer(b.getAttribute("data-trainer-del"));
-          fillSelects(); renderMore();
+          askConfirm("Delete trainer?", "Ye trainer delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+            if (!ok) return;
+            D.deleteTrainer(b.getAttribute("data-trainer-del"));
+            fillSelects(); renderMore();
+          });
         });
       });
     }
     var nl = $("noticeList");
     if (nl) nl.querySelectorAll("[data-notice-del]").forEach(function (b) {
       b.addEventListener("click", function () {
-        if (!confirm("Delete this notice? Ye wapas nahi aayega.")) return;
-        D.deleteNotice(b.getAttribute("data-notice-del"));
-        renderMore();
+        askConfirm("Delete notice?", "Ye notice delete ho jayega. Ye wapas nahi aayega.", "Yes, delete").then(function (ok) {
+          if (!ok) return;
+          D.deleteNotice(b.getAttribute("data-notice-del"));
+          renderMore();
+        });
       });
     });
     wireEmptyBtn("emptyAddPlan", function () { var f = $("planForm"); if (f) { scrollToEl(f); var n = f.elements ? f.elements["name"] : null; if (n) n.focus(); } });
@@ -839,12 +874,14 @@
     e.target.value = "";
   });
   on("resetBtn", "click", function () {
-    if (!confirm("Reset all data? Saara data delete ho jayega — ye wapas nahi aayega.")) return;
-    D.resetAll();
-    fillSelects(); applySettings();
-    if ($("attDate")) $("attDate").value = D.todayStr();
-    attWorking = {};
-    renderSection(currentSection);
+    askConfirm("Reset all data?", "Saara data delete ho jayega — ye wapas nahi aayega.", "Yes, reset").then(function (ok) {
+      if (!ok) return;
+      D.resetAll();
+      fillSelects(); applySettings();
+      if ($("attDate")) $("attDate").value = D.todayStr();
+      attWorking = {};
+      renderSection(currentSection);
+    });
   });
 
   /* ---------- Init ---------- */

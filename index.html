@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=4">
+<link rel="manifest" href="manifest.json?v=5">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -273,9 +273,24 @@
   </div>
 </div>
 
-<script src="config.js?v=4"></script>
-<script src="data.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<!-- Generic confirmation modal — native confirm() ki jagah.
+     Native confirm() headless/automated browser me dikhta hi nahi aur
+     false return karta hai, isliye Archive/Delete wahan silently fail
+     ho jate the. Ye modal har browser me kaam karta hai. -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h3 id="confirmTitle">Confirm</h3>
+    <p id="confirmMsg"></p>
+    <div class="toolbar" style="margin-top:16px;">
+      <button class="btn danger" id="confirmYes">Yes</button>
+      <button class="btn ghost" id="confirmNo">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js?v=5"></script>
+<script src="data.js?v=5"></script>
+<script src="app.js?v=5"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
