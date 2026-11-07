@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
 <meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=12">
+<link rel="manifest" href="manifest.json?v=13">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 <!-- ============ AUTH SCREEN (v1.4) — login se pehle sirf ye dikhta hai ============ -->
@@ -224,7 +224,7 @@
             <div><label>Fee Type *</label><select name="type" id="feeType" required><option>Membership</option><option>Admission</option><option>Other</option></select></div>
             <div><label>Month *</label><select name="month" id="feeMonth" required></select></div>
             <div><label>Amount (₹) *</label><input name="amount" id="feeAmount" type="number" min="1" required placeholder="e.g. 1000"></div>
-            <div class="full"><button class="btn" type="submit">Save Fee</button> <button class="btn ghost" type="button">Cancel</button></div>
+            <div class="full"><button class="btn" type="submit">Save Fee</button> <button class="btn ghost" type="button" id="addFeeCancel">Cancel</button></div>
           </form>
           <p class="muted" id="addFeeMsg"></p>
         </div>
@@ -381,10 +381,10 @@
   </div>
 </div>
 
-<script src="config.js?v=12"></script>
-<script src="auth.js?v=12"></script>
-<script src="data.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="auth.js?v=13"></script>
+<script src="data.js?v=13"></script>
+<script src="app.js?v=13"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

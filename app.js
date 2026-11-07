@@ -138,6 +138,9 @@
   /* ---------- Navigation ---------- */
   function showSection(name) {
     currentSection = name;
+    // Purane section ke confirmation messages (jaise "Plan assigned ✓")
+    // naye section mein nahi dikhne chahiye — section badalte hi clear.
+    ["memberMsg", "assignMsg", "addFeeMsg", "attMsg", "importMsg", "settingsMsg"].forEach(function (id) { setText(id, ""); });
     document.querySelectorAll(".section").forEach(function (el) { el.classList.toggle("active", el.id === "section-" + name); });
     document.querySelectorAll("[data-nav]").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-nav") === name); });
     var t = TITLES[name] || [name, ""];
@@ -892,6 +895,10 @@
     if ($("feeMonthFilter")) $("feeMonthFilter").value = feeMonth;
     renderFees(); renderHome();
   });
+  on("addFeeCancel", "click", function () {
+    if ($("addFeeCard")) $("addFeeCard").hidden = true;
+    setText("addFeeMsg", "");
+  });
 
   /* ---------- In-app confirmation (native confirm() ki jagah) ----------
      Native confirm() headless/automated browser me dikhta hi nahi aur
@@ -921,10 +928,14 @@
   function payWarnUpdate() {
     var f = D.feeById(payFeeId);
     var amtEl = $("payAmount");
-    if (!f || !amtEl) { setText("payWarn", ""); return; }
+    var w = $("payWarn");
+    // payWarn <p hidden> se start hota hai — sirf text badalne se wo
+    // dikhta nahi (v1.5.5 tak ka bug: warning set hoti thi par chhupi
+    // rehti thi). Isliye text ke saath hidden bhi toggle karo.
+    if (!f || !amtEl) { setText("payWarn", ""); if (w) w.hidden = true; return; }
     var amt = parseInt(amtEl.value, 10) || 0;
-    if (amt > f.due) setText("payWarn", "Due is only " + inr(f.due) + " — " + inr(amt - f.due) + " extra. Only " + inr(f.due) + " will be collected.");
-    else setText("payWarn", "");
+    if (amt > f.due) { setText("payWarn", "Due is only " + inr(f.due) + " — " + inr(amt - f.due) + " extra. Only " + inr(f.due) + " will be collected."); if (w) w.hidden = false; }
+    else { setText("payWarn", ""); if (w) w.hidden = true; }
   }
   function openPayModal(feeId) {
     var f = D.feeById(feeId);
@@ -934,6 +945,7 @@
     if ($("payAmount")) { $("payAmount").value = f.due; $("payAmount").max = f.due; }
     if ($("payMethod")) $("payMethod").value = "Cash";
     setText("payWarn", "");
+    var pw0 = $("payWarn"); if (pw0) pw0.hidden = true;
     setHTML("receiptBox", "");
     if ($("payModal")) $("payModal").classList.add("open");
   }
@@ -967,6 +979,7 @@
       (res.overpaid > 0 ? "<p class='muted'>" + inr(res.overpaid) + " extra was not collected.</p>" : "") +
       "</div><button class='btn secondary' onclick='window.print()'>Print Receipt</button> " + waPart);
     setText("payWarn", "");
+    var pw1 = $("payWarn"); if (pw1) pw1.hidden = true;
     renderFees(); renderHome();
   });
 
