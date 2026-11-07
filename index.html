@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
-<meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
-<link rel="manifest" href="manifest.json?v=14">
+<meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Trainers, Notices.">
+<link rel="manifest" href="manifest.json?v=15">
 <meta name="theme-color" content="#111318">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 <!-- ============ AUTH SCREEN (v1.4) — login se pehle sirf ye dikhta hai ============ -->
@@ -137,7 +137,7 @@
           <button class="btn" id="newMemberBtn">+ New Member</button>
         </div>
         <p class="muted" id="memberMsg"></p>
-        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Age</th><th>Phone</th><th>Join Date</th><th>Plan valid till</th><th>Status</th></tr></thead><tbody id="memberRows"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Age</th><th>Phone</th><th>Join Date</th><th>Monthly Fee</th><th>Status</th></tr></thead><tbody id="memberRows"></tbody></table></div></div>
 
         <div class="card" id="memberCard" hidden>
           <div id="memberProfile"></div>
@@ -152,17 +152,8 @@
             </div>
           </div>
           <div class="toolbar"><button class="btn" id="saveExtrasBtn">Save Diet &amp; Workout</button></div>
-          <div class="card"><h3>Fee History</h3><div class="table-wrap"><table><thead><tr><th>Plan / Type</th><th>Month</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody id="memberFeeRows"></tbody></table></div></div>
+          <div class="card"><h3>Fee History</h3><div class="table-wrap"><table><thead><tr><th>Type</th><th>Month</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody id="memberFeeRows"></tbody></table></div></div>
           <div class="card"><h3>Recent Attendance</h3><div id="memberAttRecent"></div></div>
-          <div class="card"><h3>Membership Plan</h3>
-            <div id="activePlanBox"></div>
-            <div class="toolbar">
-              <select id="assignPlanSelect" aria-label="Plan"></select>
-              <button class="btn" id="assignPlanBtn">Assign Plan</button>
-              <button class="btn secondary" id="renewPlanBtn">Renew Plan</button>
-            </div>
-            <p class="muted" id="assignMsg"></p>
-          </div>
           <div class="toolbar">
             <button class="btn secondary" id="editMemberBtn">Edit Member</button>
             <button class="btn danger" id="archiveMemberBtn">Archive Member</button>
@@ -195,8 +186,7 @@
             <div><label>Weight (kg)</label><input name="weight" type="number" min="1" step="0.1" placeholder="e.g. 70"></div>
             <div><label>Goal</label><input name="goal" placeholder="e.g. Weight loss / Muscle gain"></div>
             <div><label>Trainer</label><select name="trainerId"><option value="">No Trainer</option></select></div>
-            <div><label>Plan</label><select name="planId"><option value="">No Plan</option></select></div>
-            <div class="full"><p class="muted" id="planHint" hidden>No plans yet — create one in More → Plans, then pick it here to add the fee.</p></div>
+            <div><label>Monthly Fee (₹)</label><input name="monthlyFee" type="number" min="0" placeholder="e.g. 600"></div>
             <div><label>Join Date</label><input name="joinDate" id="joinDateField" type="date"></div>
             <div class="full"><button class="btn" type="submit">Save Member</button> <button class="btn ghost" type="button" id="memberCancel">Cancel</button></div>
           </form>
@@ -233,7 +223,7 @@
           <button data-tab="defaulters">Defaulter List</button>
           <button data-tab="paid">Paid</button>
         </div>
-        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Plan / Type</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody id="feeRows"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody id="feeRows"></tbody></table></div></div>
         <div class="card"><h3>Expenses</h3>
           <div class="toolbar"><button class="btn" id="addExpenseBtn">+ Add Expense</button><span class="muted">Total: <b id="expenseTotal">₹0</b></span></div>
           <form class="form" id="expenseForm">
@@ -264,18 +254,7 @@
 
       <!-- ===== MORE ===== -->
       <section class="section" id="section-more">
-        <div class="page-head"><h2>More</h2><p>Plans, trainers, notices, settings and data — all here.</p></div>
-
-        <div class="card"><h3>Plans</h3>
-          <div id="planRows"></div>
-          <form class="form" id="planForm">
-            <h3 id="planFormTitle">New Plan</h3>
-            <div><label>Plan Name *</label><input name="name" required placeholder="e.g. Monthly"></div>
-            <div><label>Days *</label><input name="days" type="number" min="1" required placeholder="e.g. 30"></div>
-            <div><label>Price (₹) *</label><input name="price" type="number" min="1" required placeholder="e.g. 1000"></div>
-            <div class="full"><button class="btn" type="submit">Save Plan</button> <button class="btn ghost" type="button" id="planCancel">Cancel</button></div>
-          </form>
-        </div>
+        <div class="page-head"><h2>More</h2><p>Trainers, notices, settings and data — all here.</p></div>
 
         <div class="card"><h3>Trainers</h3>
           <div id="trainerRows"></div>
@@ -381,10 +360,10 @@
   </div>
 </div>
 
-<script src="config.js?v=14"></script>
-<script src="auth.js?v=14"></script>
-<script src="data.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="config.js?v=15"></script>
+<script src="auth.js?v=15"></script>
+<script src="data.js?v=15"></script>
+<script src="app.js?v=15"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

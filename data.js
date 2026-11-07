@@ -28,6 +28,13 @@
     return value;
   }
   function monthOf(dateStr) { return (dateStr || "").slice(0, 7); }
+  /* Months from `from` to `to` (inclusive, "YYYY-MM") — only months the
+     app's FEE_MONTHS list covers, so labels and the month filter work. */
+  function monthsBetween(from, to) {
+    var out = [];
+    FEE_MONTHS.forEach(function (fm) { if (fm.value >= from && fm.value <= to) out.push(fm.value); });
+    return out;
+  }
   function todayStr() {
     // IST date, always — server/client timezone mismatch caused off-by-one
     // "today" counts in an earlier build. One source of truth here.
@@ -117,12 +124,16 @@
       KEY = CFG.ACCOUNT_DATA_PREFIX + accountId;
       state = loadFromStore();
       if (!state || state.version !== 1) { state = seed(seedSettings); saveToStore(state); }
+      this.migrateMonthlyFees();
+      this.ensureMonthlyDues();
       return state;
     },
     /* Replace the whole in-memory state (used by the legacy migration:
        read the old state, initForAccount, then replaceState(oldState)). */
     replaceState: function (newState) {
       state = newState;
+      this.migrateMonthlyFees();
+      this.ensureMonthlyDues();
       return saveToStore(state);
     },
     /* Re-read the current account key from localStorage (migration
@@ -161,6 +172,48 @@
       return state.settings;
     },
 
+    /* ----- Monthly fee model (v1.6.0 — plan system retired) -----
+       Simple rule, the way the gym actually works: every member has one
+       monthly fee. From the join month onward, each month's fee is Due
+       until paid. Dues are stored as ordinary Membership fee records, so
+       totals, defaulters, Collect, receipts and Delete all work unchanged
+       — only the SOURCE of the records changed (auto from join month,
+       instead of plan assign/renew). */
+    migrateMonthlyFees: function () {
+      // Members saved before v1.6.0 have no monthlyFee: take it from the
+      // active plan's price, else from their latest Membership fee amount.
+      state.members.forEach(function (m) {
+        if (m.monthlyFee !== undefined && m.monthlyFee !== null) return;
+        var fee = 0;
+        var ap = this.activePlanFor(m.id);
+        if (ap) fee = ap.price || 0;
+        else {
+          var recs = state.fees.filter(function (f) { return f.memberId === m.id && f.type === "Membership"; });
+          if (recs.length) fee = recs[recs.length - 1].amount || 0;
+        }
+        m.monthlyFee = parseInt(fee, 10) || 0;
+      }, this);
+      this.save();
+    },
+    ensureMonthlyDues: function () {
+      // Idempotent: only creates a Membership record for a month that does
+      // not have one yet. Runs on login, on member save, and on import.
+      var created = 0, cur = monthOf(todayStr());
+      state.members.forEach(function (m) {
+        if (m.status !== "active") return;
+        var fee = parseInt(m.monthlyFee, 10) || 0;
+        if (fee <= 0) return;
+        var from = monthOf(m.joinDate || todayStr());
+        monthsBetween(from, cur).forEach(function (mo) {
+          if (!this.feeExists(m.id, mo, "Membership")) {
+            this.addFee({ memberId: m.id, type: "Membership", month: mo, amount: fee });
+            created++;
+          }
+        }, this);
+      }, this);
+      return created;
+    },
+
     /* ----- Members ----- */
     membersList: function (status) {
       var list = state.members.filter(function (m) { return (status || "active") === "all" ? true : m.status === (status || "active"); });
@@ -174,15 +227,19 @@
       m.id = uid("M");
       m.status = "active";
       m.joinDate = m.joinDate || todayStr();
+      m.monthlyFee = parseInt(m.monthlyFee, 10) || 0;
       state.members.push(m);
       this.save();
+      this.ensureMonthlyDues();
       return m;
     },
     updateMember: function (id, fields) {
       var m = this.memberById(id);
       if (!m) return null;
+      if (fields.monthlyFee !== undefined) fields.monthlyFee = parseInt(fields.monthlyFee, 10) || 0;
       Object.keys(fields).forEach(function (k) { if (fields[k] !== undefined) m[k] = fields[k]; });
       this.save();
+      this.ensureMonthlyDues();
       return m;
     },
     archiveMember: function (id) {
@@ -204,6 +261,9 @@
     },
 
     /* ----- Plans ----- */
+    /* LEGACY (v1.6.0): the plan system is retired — the UI no longer uses
+       these. Kept so stored data stays valid and an older cached app
+       shell calling them does not crash. New fees come from monthlyFee. */
     plansList: function () { return state.plans.slice(); },
     planById: function (id) {
       for (var i = 0; i < state.plans.length; i++) if (state.plans[i].id === id) return state.plans[i];
@@ -452,6 +512,8 @@
         if (!data || data.version !== 1 || !data.settings || !Array.isArray(data.members)) return false;
         state = data;
         this.save();
+        this.migrateMonthlyFees();
+        this.ensureMonthlyDues();
         // A huge backup (e.g. many photos) can exceed localStorage — then
         // the import must report failure, not pretend it worked.
         return this.lastSaveError() ? false : true;

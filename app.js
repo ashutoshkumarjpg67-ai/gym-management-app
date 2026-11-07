@@ -132,15 +132,15 @@
     members: ["Members", "All members — search and filter by trainer. Add a new member here."],
     fees: ["Fees", "Fee summary — choose a month. Collect payments and get receipts here."],
     attendance: ["Attendance", "Pick a date — then mark Present / Absent and save."],
-    more: ["More", "Plans, trainers, notices, settings and data backup — all here."],
+    more: ["More", "Trainers, notices, settings and data backup — all here."],
   };
 
   /* ---------- Navigation ---------- */
   function showSection(name) {
     currentSection = name;
-    // Purane section ke confirmation messages (jaise "Plan assigned ✓")
-    // naye section mein nahi dikhne chahiye — section badalte hi clear.
-    ["memberMsg", "assignMsg", "addFeeMsg", "attMsg", "importMsg", "settingsMsg"].forEach(function (id) { setText(id, ""); });
+    // Purane section ke confirmation messages naye section mein nahi
+    // dikhne chahiye — section badalte hi clear.
+    ["memberMsg", "addFeeMsg", "attMsg", "importMsg", "settingsMsg"].forEach(function (id) { setText(id, ""); });
     document.querySelectorAll(".section").forEach(function (el) { el.classList.toggle("active", el.id === "section-" + name); });
     document.querySelectorAll("[data-nav]").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-nav") === name); });
     var t = TITLES[name] || [name, ""];
@@ -474,17 +474,13 @@
     animateNum($("statActive"), D.membersList("active").length, function (v) { return String(v); });
     animateNum($("statDue"), D.feeTotals("All").due, inr);
 
-    var exp = D.expiringSoon(7);
     var defs = D.defaulters();
     var att = "";
-    exp.forEach(function (e) {
-      att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(e.member ? e.member.name : "") + " — " + esc(e.planName) + "</div><div class='s'>Plan ends on " + D.fmtDate(e.endDate) + " (" + e.daysLeft + " days left)</div></div><span class='badge orange'>Expiring</span></div>";
-    });
     defs.forEach(function (d) {
       var name = d.member ? d.member.name : "";
       att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(name) + "</div><div class='s'>Fees due — " + inr(d.due) + "</div></div><span class='badge due'>Due</span></div>";
     });
-    setHTML("attentionList", att || emptyHTML("✅", "All good", "No expiring plans or due fees."));
+    setHTML("attentionList", att || emptyHTML("✅", "All good", "No due fees."));
 
     var pays = D.paymentsRecent(10);
     setHTML("recentPayments", pays.map(function (p) {
@@ -502,10 +498,9 @@
       return true;
     });
     setHTML("memberRows", list.map(function (m) {
-      var ap = D.activePlanFor(m.id);
       return "<tr data-member='" + m.id + "'><td>" + avatarHTML(m) + " " + esc(m.name) + "</td>" +
         "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + (m.joinDate ? D.fmtDate(m.joinDate) : "—") + "</td>" +
-        "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
+        "<td>" + (m.monthlyFee ? inr(m.monthlyFee) + "/mo" : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
     }).join("") || "<tr><td colspan='6' class='empty-cell'>" + emptyHTML("👥", "No members yet", "Start by adding a member.", { id: "emptyAddMember", label: "+ Add Member" }) + "</td></tr>");
     var rowsEl = $("memberRows");
     if (rowsEl) rowsEl.querySelectorAll("[data-member]").forEach(function (r) {
@@ -526,26 +521,12 @@
     if (keep) sel.value = keep;
   }
 
-  function fillMemberFormPlans() {
-    var sel = $("memberForm") ? $("memberForm").elements["planId"] : null;
-    if (!sel) return;
-    var keep = sel.value;
-    sel.innerHTML = "";
-    var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "No Plan"; sel.appendChild(o0);
-    D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
-    if (keep) sel.value = keep;
-    var hint = $("planHint");
-    if (hint) hint.hidden = D.plansList().length > 0;
-  }
-
   function openMember(id) {
     var m = D.memberById(id);
     if (!m) return;
     currentMemberId = id;
-    var ap = D.activePlanFor(id);
-    currentMpId = ap ? ap.id : null;
     setHTML("memberProfile",
-      "<div class='list-row'>" + avatarHTML(m, true) + "<div class='grow'><div class='t'>" + esc(m.name) + "</div><div class='s'>Joined " + D.fmtDate(m.joinDate) + " • " + esc(m.status || "active") + "</div></div></div>" +
+      "<div class='list-row'>" + avatarHTML(m, true) + "<div class='grow'><div class='t'>" + esc(m.name) + "</div><div class='s'>Joined " + D.fmtDate(m.joinDate) + (m.monthlyFee ? " • " + inr(m.monthlyFee) + "/month" : "") + " • " + esc(m.status || "active") + "</div></div></div>" +
       "<div class='kv'><dt>Age</dt><dd>" + (m.age || "—") + "</dd><dt>Phone</dt><dd>" + esc(m.phone || "—") + "</dd><dt>Gender</dt><dd>" + esc(m.gender || "—") + "</dd><dt>Weight</dt><dd>" + (m.weight ? esc(m.weight) + " kg" : "—") + "</dd><dt>Goal</dt><dd>" + esc(m.goal || "—") + "</dd><dt>Trainer</dt><dd>" + esc(trainerName(m.trainerId)) + "</dd></div>");
     var ex = D.extrasFor(id);
     if ($("dietText")) $("dietText").value = ex.diet || "";
@@ -563,30 +544,12 @@
       return "<div class='list-row'><div class='grow'><div class='t'>" + D.fmtDate(d) + "</div></div><span class='badge " + (v === "Present" ? "paid" : v === "Absent" ? "due" : "info") + "'>" + esc(v || "—") + "</span></div>";
     }).join("") || emptyHTML("✓", "No attendance yet", "It will show here once attendance is marked."));
 
-    // Assign plan
-    var sel = $("assignPlanSelect");
-    if (sel) {
-      sel.innerHTML = "";
-      if (!D.plansList().length) { var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "No plans yet — create one in More → Plans"; sel.appendChild(o0); }
-      D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
-    }
-    setText("assignMsg", D.plansList().length ? "" : "Create a membership plan first");
-    if (ap) {
-      setHTML("activePlanBox", "<div class='kv'><dt>Plan</dt><dd>" + esc(ap.planName) + "</dd><dt>Valid till</dt><dd>" + D.fmtDate(ap.endDate) + "</dd><dt>Price</dt><dd>" + inr(ap.price) + "</dd></div>");
-      if ($("activePlanBox")) $("activePlanBox").hidden = false;
-      if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
-    } else {
-      setHTML("activePlanBox", "<p class='muted'>This member has no active plan.</p>");
-      if ($("activePlanBox")) $("activePlanBox").hidden = false;
-      if ($("renewPlanBtn")) $("renewPlanBtn").hidden = true;
-    }
     if ($("memberCard")) { $("memberCard").hidden = false; scrollToEl($("memberCard")); }
   }
 
   on("saveExtrasBtn", "click", function () {
     if (!currentMemberId) return;
     D.saveExtras(currentMemberId, { diet: $("dietText") ? $("dietText").value.trim() : "", workout: $("workoutText") ? $("workoutText").value.trim() : "" });
-    setText("assignMsg", "");
     if ($("saveExtrasBtn")) $("saveExtrasBtn").textContent = "Saved ✓";
     setTimeout(function () { if ($("saveExtrasBtn")) $("saveExtrasBtn").textContent = "Save Diet / Workout"; }, 2000);
   });
@@ -595,7 +558,6 @@
     var m = D.memberById(currentMemberId);
     if (!m) return;
     fillMemberFormTrainers();
-    fillMemberFormPlans();
     var f = $("memberForm");
     if (!f) return;
     f.elements["name"].value = m.name || "";
@@ -605,9 +567,8 @@
     f.elements["weight"].value = m.weight || "";
     f.elements["goal"].value = m.goal || "";
     f.elements["trainerId"].value = m.trainerId || "";
+    f.elements["monthlyFee"].value = m.monthlyFee || "";
     f.elements["joinDate"].value = m.joinDate || D.todayStr();
-    var ap0 = D.activePlanFor(m.id);
-    if (ap0 && f.elements["planId"]) f.elements["planId"].value = ap0.planId;
     setText("memberFormTitle", "Edit Member");
     if ($("memberIdField")) $("memberIdField").value = m.id;
     pendingPhoto = m.photo || null;
@@ -628,38 +589,6 @@
       setText("memberMsg", "✓ " + m.name + " archived.");
     });
   });
-  on("assignPlanBtn", "click", function () {
-    if (!currentMemberId) return;
-    var plans = D.plansList();
-    if (!plans.length) { setText("assignMsg", "Create a membership plan first"); return; }
-    var planId = $("assignPlanSelect") ? $("assignPlanSelect").value : "";
-    if (!planId) { setText("assignMsg", "Choose a plan first."); return; }
-    var res = D.assignPlan(currentMemberId, planId);
-    if (!res.ok) {
-      if (res.error === "active-exists") {
-        setText("assignMsg", "Already has an active plan — use Renew");
-        if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
-      } else {
-        setText("assignMsg", "Plan could not be assigned — try again.");
-      }
-      return;
-    }
-    openMember(currentMemberId);
-    renderMembers();
-    if (res.feeSkipped) setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee for " + D.monthLabel(res.mp.startDate.slice(0, 7)) + " already exists, so no new fee record was created.");
-    else setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record created (Due).");
-    return;
-  });
-  on("renewPlanBtn", "click", function () {
-    if (!currentMpId) return;
-    var res = D.renewPlan(currentMpId);
-    if (!res.ok) { setText("assignMsg", "Renew failed — the plan may have been deleted. Assign a new plan."); return; }
-    openMember(currentMemberId);
-    renderMembers();
-    if (res.feeSkipped) setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee for " + D.monthLabel(res.feeMonth || D.todayStr().slice(0, 7)) + " already exists, so no new fee record was created.");
-    else setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record created (Due).");
-  });
-
   /* ---------- Member photo picker (admission / edit form) ---------- */
   var pendingPhoto = null; // compressed JPEG data URL, ya null (koi photo nahi)
   var PHOTO_STATUS_DEFAULT = "Photo is auto-compressed on save (~50KB) so phone storage doesn't fill up.";
@@ -721,7 +650,6 @@
 
   on("newMemberBtn", "click", function () {
     fillMemberFormTrainers();
-    fillMemberFormPlans();
     var f = $("memberForm");
     if (!f) return;
     f.reset();
@@ -754,6 +682,7 @@
       weight: fv(f, "weight").trim(),
       goal: fv(f, "goal").trim(),
       trainerId: fv(f, "trainerId"),
+      monthlyFee: parseInt(fv(f, "monthlyFee"), 10) || 0,
       joinDate: fv(f, "joinDate") || D.todayStr(),
       photo: photo
     };
@@ -785,20 +714,14 @@
         } else { D.removeMember(saved.id); return failQuotaSave(); }
       }
     }
-    // Admission/edit form mein plan chuna ho to use assign karo — tabhi fee
-    // record (Due) banta hai aur member defaulter list mein aata hai.
-    // Pehle se active plan ho to dobara assign mat karo (duplicate fee na bane).
-    var planMsg = "";
-    var chosenPlan = fv(f, "planId");
-    if (chosenPlan && saved) {
-      var targetId = id || saved.id;
-      if (targetId && !D.activePlanFor(targetId)) {
-        var pres = D.assignPlan(targetId, chosenPlan);
-        if (pres.ok) planMsg = pres.feeSkipped ? ("Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee for " + D.monthLabel(pres.mp.startDate.slice(0, 7)) + " already exists, so no new fee record was created.") : ("Plan assigned ✓ — valid till " + D.fmtDate(pres.mp.endDate) + ". Fee record created (Due).");
-      }
-    }
+    // Monthly fee save hote hi join month se aaj tak ke saare mahinon ki
+    // Due fee records ban jati hain (data.js ensureMonthlyDues) — isliye
+    // member turant defaulter list mein dikhta hai, bina plan ke.
     if (photoDropped) setText("memberMsg", "⚠️ Storage is almost full — member saved without photo. Take a backup from More → Data → Export, then delete old data to add the photo again.");
-    else if (planMsg) setText("memberMsg", planMsg);
+    else if (saved && saved.monthlyFee) {
+      var duesN = D.feesFor("All", "All").filter(function (x) { return x.memberId === (id || saved.id) && x.type === "Membership"; }).length;
+      setText("memberMsg", "✓ " + saved.name + " saved. Monthly fee " + inr(saved.monthlyFee) + "/month — " + duesN + " month(s) due from " + D.monthLabel((saved.joinDate || "").slice(0, 7)) + ".");
+    } else if (saved) setText("memberMsg", "✓ " + saved.name + " saved.");
     else setText("memberMsg", "");
     pendingPhoto = null;
     if ($("memberFormCard")) $("memberFormCard").hidden = true;
@@ -1053,14 +976,9 @@
     renderHome();
   });
 
-  /* ---------- More: Plans / Trainers / Notices / Settings / Data ---------- */
-  var editingPlanId = null;
+  /* ---------- More: Trainers / Notices / Settings / Data ---------- */
   var editingTrainerId = null;
   function renderMore() {
-    setHTML("planRows", D.plansList().map(function (p) {
-      return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.name) + "</div><div class='s'>" + p.days + " days • " + inr(p.price) + "</div></div>" +
-        "<button class='btn small secondary' data-plan-edit='" + p.id + "'>Edit</button> <button class='btn small danger' data-plan-del='" + p.id + "'>Delete</button></div>";
-    }).join("") || emptyHTML("📋", "No plans yet", "Create a membership plan first.", { id: "emptyAddPlan", label: "+ Add Plan" }));
     setHTML("trainerRows", D.trainersList().map(function (t) {
       return "<div class='list-row'><span class='avatar'>" + esc(initials(t.name)) + "</span><div class='grow'><div class='t'>" + esc(t.name) + "</div><div class='s'>" + esc(t.specialty || "") + (t.phone ? " • " + esc(t.phone) : "") + "</div></div>" +
         "<button class='btn small secondary' data-trainer-edit='" + t.id + "'>Edit</button> <button class='btn small danger' data-trainer-del='" + t.id + "'>Delete</button></div>";
@@ -1069,30 +987,6 @@
       return "<div class='card'><div class='list-row'><div class='grow'><div class='t'>" + esc(n.title) + "</div><div>" + esc(n.body) + "</div><div class='s'>" + D.fmtDate(n.date) + (n.tag ? " • " + esc(n.tag) : "") + "</div></div><button class='btn small danger' data-notice-del='" + n.id + "'>Delete</button></div></div>";
     }).join("") || emptyHTML("📢", "No notices yet", "Publish your first notice."));
 
-    var pr = $("planRows");
-    if (pr) {
-      pr.querySelectorAll("[data-plan-edit]").forEach(function (b) {
-        b.addEventListener("click", function () {
-          var p = null;
-          D.plansList().forEach(function (x) { if (x.id === b.getAttribute("data-plan-edit")) p = x; });
-          if (!p) return;
-          editingPlanId = p.id;
-          var f = $("planForm");
-          f.elements["name"].value = p.name; f.elements["days"].value = p.days; f.elements["price"].value = p.price;
-          setText("planFormTitle", "Edit Plan");
-          if ($("planForm")) scrollToEl($("planForm"));
-        });
-      });
-      pr.querySelectorAll("[data-plan-del]").forEach(function (b) {
-        b.addEventListener("click", function () {
-          askConfirm("Delete plan?", "This plan will be deleted. This cannot be undone.", "Yes, delete").then(function (ok) {
-            if (!ok) return;
-            D.deletePlan(b.getAttribute("data-plan-del"));
-            renderMore();
-          });
-        });
-      });
-    }
     var tr = $("trainerRows");
     if (tr) {
       tr.querySelectorAll("[data-trainer-edit]").forEach(function (b) {
@@ -1126,7 +1020,6 @@
         });
       });
     });
-    wireEmptyBtn("emptyAddPlan", function () { var f = $("planForm"); if (f) { scrollToEl(f); var n = f.elements ? f.elements["name"] : null; if (n) n.focus(); } });
     wireEmptyBtn("emptyAddTrainer", function () { var f = $("trainerForm"); if (f) { scrollToEl(f); var n = f.elements ? f.elements["name"] : null; if (n) n.focus(); } });
     var sf = $("settingsForm");
     if (sf) {
@@ -1142,24 +1035,6 @@
     var si = D.storageInfo();
     setText("storageInfo", "Storage use: ~" + Math.round(si.bytes / 1024) + " KB • " + si.members + " members • " + si.photos + " photos (" + Math.round(si.photoChars / 1024) + " KB). If storage is almost full, new photos will be saved without the photo — take a backup via Export.");
   }
-  on("planForm", "submit", function (e) {
-    e.preventDefault();
-    var f = e.target;
-    var name = fv(f, "name").trim();
-    var days = parseInt(fv(f, "days"), 10);
-    var price = parseInt(fv(f, "price"), 10);
-    if (!name || !days || days <= 0 || !price || price < 0) return;
-    D.savePlan({ id: editingPlanId || undefined, name: name, days: days, price: price });
-    editingPlanId = null;
-    f.reset();
-    setText("planFormTitle", "Add Plan");
-    renderMore();
-  });
-  on("planCancel", "click", function () {
-    editingPlanId = null;
-    var f = $("planForm"); if (f) f.reset();
-    setText("planFormTitle", "Add Plan");
-  });
   on("trainerForm", "submit", function (e) {
     e.preventDefault();
     var f = e.target;
