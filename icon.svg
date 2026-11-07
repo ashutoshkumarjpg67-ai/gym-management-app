@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Gym Management App mark — original: dumbbell on ink-black, signal orange. Not copied from any brand. -->
+  <rect width="512" height="512" rx="110" fill="#111318"/>
+  <g fill="#ff5a1f">
+    <rect x="86" y="196" width="34" height="120" rx="14"/>
+    <rect x="130" y="166" width="34" height="180" rx="14"/>
+    <rect x="348" y="166" width="34" height="180" rx="14"/>
+    <rect x="392" y="196" width="34" height="120" rx="14"/>
+  </g>
+  <rect x="164" y="238" width="184" height="36" rx="18" fill="#ffffff"/>
+  <text x="256" y="452" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" font-weight="bold" letter-spacing="6" fill="#ffffff">GYM</text>
+</svg>

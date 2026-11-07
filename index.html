@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gym Management App — SPARTAN FITNESS, Gopalganj</title>
+<meta name="description" content="Gym Management App — SPARTAN FITNESS, Gopalganj. Members, Fees, Attendance, Plans, Trainers, Notices.">
+<link rel="manifest" href="manifest.json?v=1">
+<meta name="theme-color" content="#111318">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<div class="app">
+  <!-- ============ SIDEBAR (PC) ============ -->
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <img src="icon.svg" alt="Gym Management App logo">
+      <div><div class="name">Gym Management App</div><div class="sub">SPARTAN FITNESS • Gopalganj</div></div>
+    </div>
+    <div class="school-chip"><b id="gymNameSide">SPARTAN FITNESS</b><span id="gymCitySide">Gopalganj</span></div>
+    <nav class="nav" id="sideNav">
+      <div class="nav-label">Main</div>
+      <button data-nav="home" class="active"><span class="ic">▦</span> Home</button>
+      <button data-nav="members"><span class="ic">👥</span> Members</button>
+      <button data-nav="fees"><span class="ic">₹</span> Fees</button>
+      <button data-nav="attendance"><span class="ic">✓</span> Attendance</button>
+      <button data-nav="more"><span class="ic">⋯</span> More</button>
+    </nav>
+    <p class="muted" style="padding:12px 10px;">Powered by Gym Management App</p>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <h1 id="topTitle">Home</h1>
+      <div class="spacer"></div>
+      <span id="gymNameTop">SPARTAN FITNESS</span>
+    </header>
+
+    <main class="content">
+      <!-- ===== HOME ===== -->
+      <section class="section active" id="section-home">
+        <div class="page-head"><h2>Home</h2><p>Aaj ka hisaab — collection, attendance aur due, ek nazar me.</p></div>
+        <div class="dark-band">
+          <div class="grid-4">
+            <div class="stat"><div class="label">Collected Today</div><div class="value" id="statCollected">₹0</div><div class="hint">Today's payments</div></div>
+            <div class="stat"><div class="label">Present Today</div><div class="value" id="statPresent">0 / 0</div><div class="hint">Members present today</div></div>
+            <div class="stat"><div class="label">Active Members</div><div class="value" id="statActive">0</div><div class="hint">Currently active</div></div>
+            <div class="stat"><div class="label">Total Due</div><div class="value" id="statDue">₹0</div><div class="hint">All unpaid fees</div></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><h3>Needs Attention</h3><div id="attentionList"></div></div>
+          <div class="card"><h3>Recent Payments</h3><div id="recentPayments"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== MEMBERS ===== -->
+      <section class="section" id="section-members">
+        <div class="page-head"><h2>Members</h2><p>Saare members ki list, search aur trainer filter. Naya member yahin se add karo.</p></div>
+        <div class="toolbar">
+          <input type="search" id="memberSearch" placeholder="Search name… / नाम खोजें">
+          <select id="memberTrainerFilter" aria-label="Trainer"><option value="All">All Trainers</option></select>
+          <button class="btn" id="newMemberBtn">+ New Member</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Age</th><th>Phone</th><th>Trainer</th><th>Plan valid till</th><th>Status</th></tr></thead><tbody id="memberRows"></tbody></table></div></div>
+
+        <div class="card" id="memberCard" hidden>
+          <div id="memberProfile"></div>
+          <div class="grid-2">
+            <div>
+              <h3>Diet Plan</h3>
+              <textarea id="dietText" rows="4" placeholder="Diet plan likho…"></textarea>
+            </div>
+            <div>
+              <h3>Workout Plan</h3>
+              <textarea id="workoutText" rows="4" placeholder="Workout plan likho…"></textarea>
+            </div>
+          </div>
+          <div class="toolbar"><button class="btn" id="saveExtrasBtn">Save Diet &amp; Workout</button></div>
+          <div class="card"><h3>Fee History</h3><div class="table-wrap"><table><thead><tr><th>Plan / Type</th><th>Month</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody id="memberFeeRows"></tbody></table></div></div>
+          <div class="card"><h3>Recent Attendance</h3><div id="memberAttRecent"></div></div>
+          <div class="card"><h3>Membership Plan</h3>
+            <div id="activePlanBox"></div>
+            <div class="toolbar">
+              <select id="assignPlanSelect" aria-label="Plan"></select>
+              <button class="btn" id="assignPlanBtn">Assign Plan</button>
+              <button class="btn secondary" id="renewPlanBtn">Renew Plan</button>
+            </div>
+            <p class="muted" id="assignMsg"></p>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" id="editMemberBtn">Edit Member</button>
+            <button class="btn danger" id="archiveMemberBtn">Archive Member</button>
+            <button class="btn ghost" id="closeMemberBtn">Close</button>
+          </div>
+        </div>
+
+        <div class="card" id="memberFormCard" hidden>
+          <h3 id="memberFormTitle">New Member</h3>
+          <form class="form" id="memberForm">
+            <input type="hidden" name="memberId" id="memberIdField">
+            <div><label>Member Name *</label><input name="name" required placeholder="e.g. Rahul Kumar"></div>
+            <div><label>Age</label><input name="age" type="number" min="1" placeholder="e.g. 22"></div>
+            <div><label>Phone</label><input name="phone" type="tel" placeholder="e.g. 98765 43210"></div>
+            <div><label>Gender</label><select name="gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+            <div><label>Weight (kg)</label><input name="weight" type="number" min="1" step="0.1" placeholder="e.g. 70"></div>
+            <div><label>Goal</label><input name="goal" placeholder="e.g. Weight loss / Muscle gain"></div>
+            <div><label>Trainer</label><select name="trainerId"><option value="">No Trainer</option></select></div>
+            <div><label>Join Date</label><input name="joinDate" type="date"></div>
+            <div class="full"><button class="btn" type="submit">Save Member</button> <button class="btn ghost" type="button" id="memberCancel">Cancel</button></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ===== FEES ===== -->
+      <section class="section" id="section-fees">
+        <div class="page-head"><h2>Fees</h2><p>Fees ka hisaab — kitni bani, kitni jama, kitni baki. Payment yahin se lo, receipt bhi yahin milegi.</p></div>
+        <div class="grid-4">
+          <div class="stat"><div class="label" id="feeBilledLabel">Billed (Nov 2026)</div><div class="value" id="feeBilled">₹0</div><div class="hint">All members</div></div>
+          <div class="stat green"><div class="label">Collected</div><div class="value" id="feeCollected">₹0</div><div class="hint">Paid so far</div></div>
+          <div class="stat orange"><div class="label">Due</div><div class="value" id="feeDue">₹0</div><div class="hint">Unpaid fees</div></div>
+          <div class="stat"><div class="label">Defaulters</div><div class="value" id="feeDefaulters">0</div><div class="hint">Members with due fees</div></div>
+        </div>
+        <div class="toolbar">
+          <select id="feeMonthFilter" aria-label="Month"></select>
+          <input type="search" id="feeSearch" placeholder="Search member… / नाम खोजें">
+          <button class="btn" id="addFeeBtn">+ Add Fee</button>
+        </div>
+        <div class="card" id="addFeeCard" hidden>
+          <h3>Add Fee Record</h3>
+          <form class="form" id="addFeeForm">
+            <div><label>Member *</label><select name="member" id="feeStudent" required></select></div>
+            <div><label>Fee Type *</label><select name="type" id="feeType" required><option>Membership</option><option>Admission</option><option>Other</option></select></div>
+            <div><label>Month *</label><select name="month" id="feeMonth" required></select></div>
+            <div><label>Amount (₹) *</label><input name="amount" id="feeAmount" type="number" min="1" required placeholder="e.g. 1000"></div>
+            <div class="full"><button class="btn" type="submit">Save Fee</button> <button class="btn ghost" type="button">Cancel</button></div>
+          </form>
+        </div>
+        <div class="tabs" id="feeTabs">
+          <button data-tab="records" class="active">Fee Records</button>
+          <button data-tab="defaulters">Defaulter List</button>
+          <button data-tab="paid">Paid</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Member</th><th>Plan / Type</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody id="feeRows"></tbody></table></div></div>
+        <div class="card"><h3>Expenses</h3>
+          <div class="toolbar"><button class="btn" id="addExpenseBtn">+ Add Expense</button><span class="muted">Total: <b id="expenseTotal">₹0</b></span></div>
+          <form class="form" id="expenseForm">
+            <div><label>Title *</label><input name="title" required placeholder="e.g. Electricity bill"></div>
+            <div><label>Amount (₹) *</label><input name="amount" type="number" min="1" required placeholder="e.g. 1500"></div>
+            <div><label>Date</label><input name="date" type="date"></div>
+            <div><label>Status</label><select name="status"><option>Paid</option><option>Due</option></select></div>
+            <div class="full"><button class="btn" type="submit">Save Expense</button></div>
+          </form>
+          <div id="expenseRows"></div>
+        </div>
+      </section>
+
+      <!-- ===== ATTENDANCE ===== -->
+      <section class="section" id="section-attendance">
+        <div class="page-head"><h2>Attendance</h2><p>Date chuno — phir Present / Absent mark karo aur Save karo.</p></div>
+        <div class="card">
+          <div class="toolbar">
+            <input type="date" id="attDate">
+            <input type="search" id="attSearch" placeholder="Search member… / नाम खोजें">
+            <button class="btn secondary" id="markAllBtn">Mark All Present</button>
+            <button class="btn" id="saveAttBtn">Save Attendance</button>
+          </div>
+          <p class="muted" id="attMsg"></p>
+          <div id="attList"></div>
+        </div>
+      </section>
+
+      <!-- ===== MORE ===== -->
+      <section class="section" id="section-more">
+        <div class="page-head"><h2>More</h2><p>Plans, trainers, notices, settings aur data — sab yahin.</p></div>
+
+        <div class="card"><h3>Plans</h3>
+          <div id="planRows"></div>
+          <form class="form" id="planForm">
+            <h3 id="planFormTitle">New Plan</h3>
+            <div><label>Plan Name *</label><input name="name" required placeholder="e.g. Monthly"></div>
+            <div><label>Days *</label><input name="days" type="number" min="1" required placeholder="e.g. 30"></div>
+            <div><label>Price (₹) *</label><input name="price" type="number" min="1" required placeholder="e.g. 1000"></div>
+            <div class="full"><button class="btn" type="submit">Save Plan</button> <button class="btn ghost" type="button" id="planCancel">Cancel</button></div>
+          </form>
+        </div>
+
+        <div class="card"><h3>Trainers</h3>
+          <div id="trainerRows"></div>
+          <form class="form" id="trainerForm">
+            <div><label>Trainer Name *</label><input name="name" required placeholder="e.g. Amit Singh"></div>
+            <div><label>Specialty</label><input name="specialty" placeholder="e.g. Strength training"></div>
+            <div><label>Phone</label><input name="phone" type="tel" placeholder="e.g. 98765 43210"></div>
+            <div class="full"><button class="btn" type="submit">Save Trainer</button></div>
+          </form>
+        </div>
+
+        <div class="card"><h3>Notices</h3>
+          <div id="noticeList"></div>
+          <form class="form" id="noticeForm">
+            <div><label>Title *</label><input name="title" required placeholder="Notice ka title"></div>
+            <div><label>Tag</label><select name="tag"><option>General</option><option>Holiday</option><option>Fees</option><option>Timing</option><option>Event</option></select></div>
+            <div class="full"><label>Message *</label><textarea name="body" rows="3" required placeholder="Notice likho…"></textarea></div>
+            <div class="full"><button class="btn" type="submit">Publish Notice</button></div>
+          </form>
+        </div>
+
+        <div class="card"><h3>Settings</h3>
+          <form class="form" id="settingsForm">
+            <div><label>Gym Name *</label><input name="gymName" required placeholder="e.g. SPARTAN FITNESS"></div>
+            <div><label>Owner Name</label><input name="ownerName" placeholder="Owner ka naam"></div>
+            <div><label>City</label><input name="city" placeholder="e.g. Gopalganj"></div>
+            <div class="full"><button class="btn" type="submit">Save Settings</button></div>
+          </form>
+          <p class="muted" id="settingsMsg"></p>
+        </div>
+
+        <div class="card"><h3>Data</h3>
+          <p class="muted">Backup ya restore — saara data ek JSON file me.</p>
+          <div class="toolbar">
+            <button class="btn secondary" id="exportBtn">Export Data</button>
+            <label class="btn secondary" for="importFile" style="cursor:pointer;">Import Data</label>
+            <input type="file" id="importFile" accept=".json,application/json" hidden>
+            <button class="btn danger" id="resetBtn">Reset All Data</button>
+          </div>
+          <p class="muted" id="importMsg"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Fixed bottom tab bar (mobile) -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Sections">
+  <button data-nav="home" class="active"><span class="ic">▦</span><span>Home</span></button>
+  <button data-nav="members"><span class="ic">👥</span><span>Members</span></button>
+  <button data-nav="fees"><span class="ic">₹</span><span>Fees</span></button>
+  <button data-nav="attendance"><span class="ic">✓</span><span>Attendance</span></button>
+  <button data-nav="more"><span class="ic">⋯</span><span>More</span></button>
+</nav>
+
+<!-- Collect Payment / Receipt modal -->
+<div class="modal-backdrop" id="payModal">
+  <div class="modal">
+    <h3>Collect Payment</h3>
+    <div id="payBody"></div>
+    <div class="form">
+      <div><label>Amount (₹) *</label><input id="payAmount" type="number" min="1" required placeholder="e.g. 1000"></div>
+      <div><label>Payment Method</label><select id="payMethod"><option>Cash</option><option>UPI</option><option>Other</option></select></div>
+    </div>
+    <p class="muted" id="payWarn" hidden></p>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="btn" id="payConfirm">Save Payment</button>
+      <button class="btn ghost" id="payClose">Close</button>
+    </div>
+    <div id="receiptBox"></div>
+  </div>
+</div>
+
+<script src="config.js?v=1"></script>
+<script src="data.js?v=1"></script>
+<script src="app.js?v=1"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () { /* offline cache optional */ });
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,657 @@
+/* Gym Management App — app.js
+ * UI only. All data comes from window.GymData (data.js).
+ * No localStorage access here, no fetch, no backend calls.
+ * Follows the VidyaSetu app.js pattern (IIFE, $/esc/inr helpers,
+ * showSection, renderSection dispatch, modal, forms).
+ */
+(function () {
+  var D = window.GymData;
+  var CFG = window.GYM_CONFIG;
+  var rs = CFG.CURRENCY;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function inr(n) { return rs + Number(n || 0).toLocaleString("en-IN"); }
+  function initials(name) {
+    var parts = String(name || "").trim().split(/\s+/).filter(function (w) { return w; });
+    if (!parts.length) return "?";
+    return parts.map(function (w) { return w[0]; }).slice(0, 2).join("").toUpperCase();
+  }
+  function setText(id, txt) { var el = $(id); if (el) el.textContent = txt; }
+  function setHTML(id, html) { var el = $(id); if (el) el.innerHTML = html; }
+  function on(id, ev, fn) { var el = $(id); if (el) el.addEventListener(ev, fn); }
+  function scrollToEl(el) { if (el && typeof el.scrollIntoView === "function") { try { el.scrollIntoView({ behavior: "smooth" }); } catch (e) {} } }
+  function fv(form, name) { var el = form.elements ? form.elements[name] : null; return el ? el.value : ""; }
+  function digitsOnly(phone) { return String(phone || "").replace(/\D/g, ""); }
+  function waLink(phone, text) { return "https://wa.me/" + digitsOnly(phone) + "?text=" + encodeURIComponent(text); }
+
+  var currentSection = "home";
+  var feeTab = "records";
+  var feeMonth = D.todayStr().slice(0, 7);
+  var currentMemberId = null;
+  var currentMpId = null;
+  var payFeeId = null;
+  var attWorking = {};
+
+  var TITLES = {
+    home: ["Home", "Aaj ka summary — collection, attendance, due fees, ek nazar me."],
+    members: ["Members", "Saare members ki list, search aur trainer filter. Naya member yahin se add karo."],
+    fees: ["Fees", "Fees ka hisaab — Month chuno. Payment yahin se lo, receipt bhi yahin milegi."],
+    attendance: ["Attendance", "Date chuno — phir Present / Absent mark karo aur Save karo."],
+    more: ["More", "Plans, trainers, notices, settings aur data backup — sab yahin."],
+  };
+
+  /* ---------- Navigation ---------- */
+  function showSection(name) {
+    currentSection = name;
+    document.querySelectorAll(".section").forEach(function (el) { el.classList.toggle("active", el.id === "section-" + name); });
+    document.querySelectorAll("[data-nav]").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-nav") === name); });
+    var t = TITLES[name] || [name, ""];
+    setText("topTitle", t[0]);
+    renderSection(name);
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+  document.querySelectorAll("[data-nav]").forEach(function (b) {
+    b.addEventListener("click", function () { showSection(b.getAttribute("data-nav")); });
+  });
+
+  function renderSection(name) {
+    if (name === "home") renderHome();
+    else if (name === "members") renderMembers();
+    else if (name === "fees") renderFees();
+    else if (name === "attendance") renderAttendance();
+    else if (name === "more") renderMore();
+  }
+
+  /* ---------- Settings / gym name ---------- */
+  function applySettings() {
+    var s = D.settings();
+    setText("gymNameTop", s.gymName);
+    setText("gymNameSide", s.gymName);
+    setText("gymCitySide", s.city || "");
+  }
+
+  /* ---------- Selects ---------- */
+  function fillSelects() {
+    var trainers = D.trainersList();
+    var tf = $("memberTrainerFilter");
+    if (tf) {
+      var keepT = tf.value;
+      tf.innerHTML = "";
+      var oAll = document.createElement("option"); oAll.value = "All"; oAll.textContent = "All Trainers"; tf.appendChild(oAll);
+      trainers.forEach(function (t) { var o = document.createElement("option"); o.value = t.id; o.textContent = t.name; tf.appendChild(o); });
+      if (keepT) tf.value = keepT;
+    }
+    var fs = $("feeStudent");
+    if (fs) {
+      var keepS = fs.value;
+      fs.innerHTML = "";
+      D.membersList("active").forEach(function (m) { var o = document.createElement("option"); o.value = m.id; o.textContent = m.name; fs.appendChild(o); });
+      if (keepS) fs.value = keepS;
+    }
+    var fm = $("feeMonthFilter");
+    if (fm && !fm.options.length) {
+      var oM = document.createElement("option"); oM.value = "All"; oM.textContent = "All Months"; fm.appendChild(oM);
+      D.feeMonths().forEach(function (m) { var o = document.createElement("option"); o.value = m.value; o.textContent = m.label; fm.appendChild(o); });
+      fm.value = feeMonth;
+    }
+    var am = $("feeMonth");
+    if (am && !am.options.length) {
+      D.feeMonths().forEach(function (m) { var o = document.createElement("option"); o.value = m.value; o.textContent = m.label; am.appendChild(o); });
+      am.value = feeMonth;
+    }
+  }
+  function trainerName(id) {
+    if (!id) return "—";
+    var found = null;
+    D.trainersList().forEach(function (t) { if (t.id === id) found = t; });
+    return found ? found.name : "—";
+  }
+
+  /* ---------- Home ---------- */
+  function renderHome() {
+    var pt = D.presentToday();
+    setText("statCollected", inr(D.collectedToday()));
+    setText("statPresent", pt.present + " / " + pt.total);
+    setText("statActive", String(D.membersList("active").length));
+    setText("statDue", inr(D.feeTotals("All").due));
+
+    var exp = D.expiringSoon(7);
+    var defs = D.defaulters();
+    var att = "";
+    exp.forEach(function (e) {
+      att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(e.member ? e.member.name : "") + " — " + esc(e.planName) + "</div><div class='s'>Plan " + D.fmtDate(e.endDate) + " ko khatam ho raha hai (" + e.daysLeft + " din bache)</div></div><span class='badge orange'>Expiring</span></div>";
+    });
+    defs.forEach(function (d) {
+      var name = d.member ? d.member.name : "";
+      att += "<div class='list-row'><div class='grow'><div class='t'>" + esc(name) + "</div><div class='s'>Fees due — " + inr(d.due) + "</div></div><span class='badge due'>Due</span></div>";
+    });
+    setHTML("attentionList", att || "<p class='muted'>Sab theek hai — koi expiring plan ya due fees nahi hai.</p>");
+
+    var pays = D.paymentsRecent(10);
+    setHTML("recentPayments", pays.map(function (p) {
+      return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.member) + "</div><div class='s'>" + esc(p.method || "Cash") + " • " + D.fmtDate(p.date) + "</div></div><b>" + inr(p.amount) + "</b></div>";
+    }).join("") || "<p class='muted'>Abhi tak koi payment nahi hui hai.</p>");
+  }
+
+  /* ---------- Members ---------- */
+  function renderMembers() {
+    var q = ($("memberSearch") ? $("memberSearch").value : "").toLowerCase();
+    var tr = $("memberTrainerFilter") ? $("memberTrainerFilter").value : "All";
+    var list = D.membersList("active").filter(function (m) {
+      if (q && m.name.toLowerCase().indexOf(q) === -1 && String(m.phone || "").indexOf(q) === -1) return false;
+      if (tr && tr !== "All" && m.trainerId !== tr) return false;
+      return true;
+    });
+    setHTML("memberRows", list.map(function (m) {
+      var ap = D.activePlanFor(m.id);
+      return "<tr data-member='" + m.id + "'><td><span class='avatar'>" + esc(initials(m.name)) + "</span> " + esc(m.name) + "</td>" +
+        "<td>" + (m.age || "—") + "</td><td>" + esc(m.phone || "—") + "</td><td>" + esc(trainerName(m.trainerId)) + "</td>" +
+        "<td>" + (ap ? D.fmtDate(ap.endDate) : "—") + "</td><td><span class='badge paid'>Active</span></td></tr>";
+    }).join("") || "<tr><td colspan='6' class='muted'>No members yet — Add Member se shuru karo.</td></tr>");
+    var rowsEl = $("memberRows");
+    if (rowsEl) rowsEl.querySelectorAll("[data-member]").forEach(function (r) {
+      r.addEventListener("click", function () { openMember(r.getAttribute("data-member")); });
+    });
+  }
+  on("memberSearch", "input", renderMembers);
+  on("memberTrainerFilter", "change", renderMembers);
+
+  function fillMemberFormTrainers() {
+    var sel = $("memberForm") ? $("memberForm").elements["trainerId"] : null;
+    if (!sel) return;
+    var keep = sel.value;
+    sel.innerHTML = "";
+    var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "No Trainer"; sel.appendChild(o0);
+    D.trainersList().forEach(function (t) { var o = document.createElement("option"); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+    if (keep) sel.value = keep;
+  }
+
+  function openMember(id) {
+    var m = D.memberById(id);
+    if (!m) return;
+    currentMemberId = id;
+    var ap = D.activePlanFor(id);
+    currentMpId = ap ? ap.id : null;
+    setHTML("memberProfile",
+      "<div class='list-row'><span class='avatar'>" + esc(initials(m.name)) + "</span><div class='grow'><div class='t'>" + esc(m.name) + "</div><div class='s'>Joined " + D.fmtDate(m.joinDate) + " • " + esc(m.status || "active") + "</div></div></div>" +
+      "<div class='kv'><dt>Age</dt><dd>" + (m.age || "—") + "</dd><dt>Phone</dt><dd>" + esc(m.phone || "—") + "</dd><dt>Gender</dt><dd>" + esc(m.gender || "—") + "</dd><dt>Weight</dt><dd>" + (m.weight ? esc(m.weight) + " kg" : "—") + "</dd><dt>Goal</dt><dd>" + esc(m.goal || "—") + "</dd><dt>Trainer</dt><dd>" + esc(trainerName(m.trainerId)) + "</dd></div>");
+    var ex = D.extrasFor(id);
+    if ($("dietText")) $("dietText").value = ex.diet || "";
+    if ($("workoutText")) $("workoutText").value = ex.workout || "";
+
+    var fees = D.feesFor("All", "All").filter(function (f) { return f.memberId === id; });
+    setHTML("memberFeeRows", fees.map(function (f) {
+      return "<tr><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + "</td><td>" + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td></tr>";
+    }).join("") || "<tr><td colspan='6' class='muted'>Is member ki koi fee record nahi hai.</td></tr>");
+
+    var attMap = D.getState().attendance || {};
+    var dates = Object.keys(attMap).sort().reverse().slice(0, 7);
+    setHTML("memberAttRecent", dates.map(function (d) {
+      var v = attMap[d][id];
+      return "<div class='list-row'><div class='grow'><div class='t'>" + D.fmtDate(d) + "</div></div><span class='badge " + (v === "Present" ? "paid" : v === "Absent" ? "due" : "info") + "'>" + esc(v || "—") + "</span></div>";
+    }).join("") || "<p class='muted'>Abhi tak koi attendance nahi hai.</p>");
+
+    // Assign plan
+    var sel = $("assignPlanSelect");
+    if (sel) {
+      sel.innerHTML = "";
+      D.plansList().forEach(function (p) { var o = document.createElement("option"); o.value = p.id; o.textContent = p.name + " — " + p.days + " days • " + inr(p.price); sel.appendChild(o); });
+    }
+    setText("assignMsg", D.plansList().length ? "" : "Pehle ek membership plan banao");
+    if (ap) {
+      setHTML("activePlanBox", "<div class='kv'><dt>Plan</dt><dd>" + esc(ap.planName) + "</dd><dt>Valid till</dt><dd>" + D.fmtDate(ap.endDate) + "</dd><dt>Price</dt><dd>" + inr(ap.price) + "</dd></div>");
+      if ($("activePlanBox")) $("activePlanBox").hidden = false;
+      if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
+    } else {
+      setHTML("activePlanBox", "<p class='muted'>Is member ka koi active plan nahi hai.</p>");
+      if ($("activePlanBox")) $("activePlanBox").hidden = false;
+      if ($("renewPlanBtn")) $("renewPlanBtn").hidden = true;
+    }
+    if ($("memberCard")) { $("memberCard").hidden = false; scrollToEl($("memberCard")); }
+  }
+
+  on("saveExtrasBtn", "click", function () {
+    if (!currentMemberId) return;
+    D.saveExtras(currentMemberId, { diet: $("dietText") ? $("dietText").value.trim() : "", workout: $("workoutText") ? $("workoutText").value.trim() : "" });
+    setText("assignMsg", "");
+    if ($("saveExtrasBtn")) $("saveExtrasBtn").textContent = "Saved ✓";
+    setTimeout(function () { if ($("saveExtrasBtn")) $("saveExtrasBtn").textContent = "Save Diet / Workout"; }, 2000);
+  });
+  on("closeMemberBtn", "click", function () { if ($("memberCard")) $("memberCard").hidden = true; currentMemberId = null; });
+  on("editMemberBtn", "click", function () {
+    var m = D.memberById(currentMemberId);
+    if (!m) return;
+    fillMemberFormTrainers();
+    var f = $("memberForm");
+    if (!f) return;
+    f.elements["name"].value = m.name || "";
+    f.elements["age"].value = m.age || "";
+    f.elements["phone"].value = m.phone || "";
+    f.elements["gender"].value = m.gender || "";
+    f.elements["weight"].value = m.weight || "";
+    f.elements["goal"].value = m.goal || "";
+    f.elements["trainerId"].value = m.trainerId || "";
+    f.elements["joinDate"].value = m.joinDate || D.todayStr();
+    setText("memberFormTitle", "Edit Member");
+    if ($("memberIdField")) $("memberIdField").value = m.id;
+    setText("memberFormTitle", "Edit Member");
+    if ($("memberFormCard")) { $("memberFormCard").hidden = false; scrollToEl($("memberFormCard")); }
+  });
+  on("archiveMemberBtn", "click", function () {
+    var m = D.memberById(currentMemberId);
+    if (!m) return;
+    if (!confirm("Archive " + m.name + "? Ye wapas nahi aayega.")) return;
+    D.archiveMember(m.id);
+    if ($("memberCard")) $("memberCard").hidden = true;
+    currentMemberId = null;
+    renderMembers(); renderHome();
+  });
+  on("assignPlanBtn", "click", function () {
+    if (!currentMemberId) return;
+    var plans = D.plansList();
+    if (!plans.length) { setText("assignMsg", "Pehle ek membership plan banao"); return; }
+    var planId = $("assignPlanSelect") ? $("assignPlanSelect").value : "";
+    if (!planId) { setText("assignMsg", "Pehle ek plan chuno."); return; }
+    var res = D.assignPlan(currentMemberId, planId);
+    if (!res.ok) {
+      if (res.error === "active-exists") {
+        setText("assignMsg", "Already has an active plan — use Renew");
+        if ($("renewPlanBtn")) $("renewPlanBtn").hidden = false;
+      } else {
+        setText("assignMsg", "Plan assign nahi hua — dobara try karo.");
+      }
+      return;
+    }
+    setText("assignMsg", "Plan assigned ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". Fee record ban gaya hai (Due).");
+    openMember(currentMemberId);
+    renderMembers();
+  });
+  on("renewPlanBtn", "click", function () {
+    if (!currentMpId) return;
+    var res = D.renewPlan(currentMpId);
+    if (!res.ok) { setText("assignMsg", "Renew nahi hua — plan delete ho gaya hoga. Naya plan assign karo."); return; }
+    setText("assignMsg", "Renewed ✓ — valid till " + D.fmtDate(res.mp.endDate) + ". New fee record ban gaya hai (Due).");
+    openMember(currentMemberId);
+    renderMembers();
+  });
+
+  on("newMemberBtn", "click", function () {
+    fillMemberFormTrainers();
+    var f = $("memberForm");
+    if (!f) return;
+    f.reset();
+    if ($("memberIdField")) $("memberIdField").value = "";
+    f.elements["joinDate"].value = D.todayStr();
+    setText("memberFormTitle", "Add Member");
+    if ($("memberFormCard")) { $("memberFormCard").hidden = false; scrollToEl($("memberFormCard")); }
+  });
+  on("memberCancel", "click", function () { if ($("memberFormCard")) $("memberFormCard").hidden = true; });
+  on("memberForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var name = fv(f, "name").trim();
+    if (!name) return;
+    var fields = {
+      name: name,
+      age: parseInt(fv(f, "age"), 10) || "",
+      phone: fv(f, "phone").trim(),
+      gender: fv(f, "gender"),
+      weight: fv(f, "weight").trim(),
+      goal: fv(f, "goal").trim(),
+      trainerId: fv(f, "trainerId"),
+      joinDate: fv(f, "joinDate") || D.todayStr()
+    };
+    var id = $("memberIdField") ? $("memberIdField").value : "";
+    if (id) D.updateMember(id, fields); else D.addMember(fields);
+    if ($("memberFormCard")) $("memberFormCard").hidden = true;
+    fillSelects();
+    renderMembers(); renderHome();
+    if (id) openMember(id);
+  });
+
+  /* ---------- Fees ---------- */
+  function renderFees() {
+    var ft = D.feeTotals(feeMonth);
+    var monthTxt = feeMonth === "All" ? "All months" : D.monthLabel(feeMonth);
+    setText("feeBilledLabel", "Billed (" + monthTxt + ")");
+    setText("feeBilled", inr(ft.billed));
+    setText("feeCollected", inr(ft.collected));
+    setText("feeDue", inr(ft.due));
+    setText("feeDefaulters", String(ft.defaulters));
+
+    var q = ($("feeSearch") ? $("feeSearch").value : "").toLowerCase();
+    var html = "";
+    if (feeTab === "defaulters") {
+      var defs = D.defaulters().filter(function (d) {
+        var name = d.member ? d.member.name : "";
+        return !q || name.toLowerCase().indexOf(q) !== -1;
+      });
+      html = defs.map(function (d) {
+        var name = d.member ? d.member.name : "";
+        var phone = d.member ? d.member.phone : "";
+        var s = D.settings();
+        var text = "Namaste " + name + ", aapki gym fees " + inr(d.due) + " due hai — " + s.gymName + ", " + s.city;
+        var waBtn = phone
+          ? "<a class='btn small' href='" + esc(waLink(phone, text)) + "' target='_blank' rel='noopener'>WhatsApp</a>"
+          : "<button class='btn small' disabled title='Phone nahi hai'>WhatsApp</button>";
+        return "<tr><td>" + esc(name) + "</td><td>" + d.fees.length + " fee record(s)</td><td>" + inr(d.due) + "</td><td>—</td><td>" + inr(d.due) + "</td><td><span class='badge due'>Due</span></td><td>" + waBtn + "</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='muted'>Koi defaulter nahi hai — sab fees paid hain.</td></tr>";
+    } else {
+      var list = D.feesFor(feeMonth, "All");
+      if (feeTab === "paid") list = list.filter(function (f) { return f.status === "Paid"; });
+      if (q) list = list.filter(function (f) { return f.member.toLowerCase().indexOf(q) !== -1; });
+      html = list.map(function (f) {
+        return "<tr><td>" + esc(f.member) + "</td><td>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</td><td>" + inr(f.amount) + "</td><td>" + inr(f.paid) + "</td><td>" + inr(f.due) + "</td><td><span class='badge " + (f.status === "Paid" ? "paid" : "due") + "'>" + f.status + "</span></td>" +
+          "<td>" + (f.due > 0 ? "<button class='btn small' data-pay='" + f.id + "'>Collect</button>" : "") + "</td></tr>";
+      }).join("") || "<tr><td colspan='7' class='muted'>No fee records for this filter.</td></tr>";
+    }
+    setHTML("feeRows", html);
+    var rowsEl = $("feeRows");
+    if (rowsEl) rowsEl.querySelectorAll("[data-pay]").forEach(function (b) {
+      b.addEventListener("click", function () { openPayModal(b.getAttribute("data-pay")); });
+    });
+    renderExpenses();
+  }
+  on("feeTabs", "click", function (e) {
+    var b = e.target.closest("button[data-tab]"); if (!b) return;
+    feeTab = b.getAttribute("data-tab");
+    document.querySelectorAll("#feeTabs button").forEach(function (x) { x.classList.toggle("active", x === b); });
+    renderFees();
+  });
+  on("feeMonthFilter", "change", function () { feeMonth = $("feeMonthFilter").value; renderFees(); });
+  on("feeSearch", "input", renderFees);
+  on("addFeeBtn", "click", function () {
+    fillSelects();
+    if ($("feeMonth")) $("feeMonth").value = feeMonth === "All" ? D.todayStr().slice(0, 7) : feeMonth;
+    if ($("addFeeCard")) { $("addFeeCard").hidden = false; scrollToEl($("addFeeCard")); }
+  });
+  on("addFeeForm", "submit", function (e) {
+    e.preventDefault();
+    var amt = parseInt($("feeAmount") ? $("feeAmount").value : "", 10);
+    var memberId = $("feeStudent") ? $("feeStudent").value : "";
+    if (!memberId || !amt || amt <= 0) return;
+    var rec = D.addFee({ memberId: memberId, type: $("feeType") ? $("feeType").value : "Membership", month: $("feeMonth") ? $("feeMonth").value : D.todayStr().slice(0, 7), amount: amt });
+    if (!rec) return;
+    if ($("addFeeCard")) $("addFeeCard").hidden = true;
+    e.target.reset();
+    feeMonth = rec.month;
+    if ($("feeMonthFilter")) $("feeMonthFilter").value = feeMonth;
+    renderFees(); renderHome();
+  });
+
+  /* ----- Collect payment modal ----- */
+  function payWarnUpdate() {
+    var f = D.feeById(payFeeId);
+    var amtEl = $("payAmount");
+    if (!f || !amtEl) { setText("payWarn", ""); return; }
+    var amt = parseInt(amtEl.value, 10) || 0;
+    if (amt > f.due) setText("payWarn", "Due sirf " + inr(f.due) + " hai — " + inr(amt - f.due) + " zyada hai. Sirf " + inr(f.due) + " collect hoga.");
+    else setText("payWarn", "");
+  }
+  function openPayModal(feeId) {
+    var f = D.feeById(feeId);
+    if (!f) return;
+    payFeeId = feeId;
+    setHTML("payBody", "<div class='kv'><dt>Member</dt><dd>" + esc(f.member) + "</dd><dt>Fee</dt><dd>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</dd><dt>Amount</dt><dd>" + inr(f.amount) + "</dd><dt>Paid</dt><dd>" + inr(f.paid) + "</dd><dt>Due</dt><dd>" + inr(f.due) + "</dd></div>");
+    if ($("payAmount")) { $("payAmount").value = f.due; $("payAmount").max = f.due; }
+    if ($("payMethod")) $("payMethod").value = "Cash";
+    setText("payWarn", "");
+    setHTML("receiptBox", "");
+    if ($("payModal")) $("payModal").classList.add("open");
+  }
+  on("payAmount", "input", payWarnUpdate);
+  on("payClose", "click", function () { if ($("payModal")) $("payModal").classList.remove("open"); });
+  on("payModal", "click", function (e) { if (e.target === $("payModal")) $("payModal").classList.remove("open"); });
+  on("payConfirm", "click", function () {
+    var amt = parseInt($("payAmount") ? $("payAmount").value : "", 10);
+    if (!payFeeId || !amt || amt <= 0) return;
+    var method = $("payMethod") ? $("payMethod").value : "Cash";
+    var res = D.collectPayment(payFeeId, amt, method);
+    if (!res) return;
+    var f = res.fee;
+    var s = D.settings();
+    var m = D.memberById(f.memberId);
+    var phone = m ? m.phone : "";
+    var today = D.fmtDate(D.todayStr());
+    var receiptText = s.gymName + " — Fee Receipt\nMember: " + f.member + "\nFee: " + f.type + (f.planName ? " — " + f.planName : "") + " (" + f.period + ")\nCollected now: " + inr(res.applied) + "\nTotal Paid: " + inr(f.paid) + " / " + inr(f.amount) + "\nBalance Due: " + inr(f.due) + "\nDate: " + today;
+    var waPart = phone
+      ? "<a class='btn secondary' href='" + esc(waLink(phone, receiptText)) + "' target='_blank' rel='noopener'>Send on WhatsApp</a>"
+      : "<p class='muted'>Member ka phone number nahi hai</p>";
+    setHTML("receiptBox",
+      "<div class='receipt'><b>Receipt — " + esc(s.gymName) + "</b>" +
+      "<div class='row'><span>Member</span><span>" + esc(f.member) + "</span></div>" +
+      "<div class='row'><span>Fee</span><span>" + esc(f.type) + (f.planName ? " — " + esc(f.planName) : "") + " • " + esc(f.period) + "</span></div>" +
+      "<div class='row'><span>Collected now</span><span>" + inr(res.applied) + "</span></div>" +
+      "<div class='row'><span>Total Paid</span><span>" + inr(f.paid) + " / " + inr(f.amount) + "</span></div>" +
+      "<div class='row'><span>Balance Due</span><span>" + inr(f.due) + "</span></div>" +
+      "<div class='row'><span>Method</span><span>" + esc(method) + "</span></div>" +
+      "<div class='row'><span>Date</span><span>" + today + "</span></div>" +
+      (res.overpaid > 0 ? "<p class='muted'>" + inr(res.overpaid) + " zyada tha — collect nahi hua.</p>" : "") +
+      "</div><button class='btn secondary' onclick='window.print()'>Print Receipt</button> " + waPart);
+    setText("payWarn", "");
+    renderFees(); renderHome();
+  });
+
+  /* ----- Expenses (inside Fees section) ----- */
+  function renderExpenses() {
+    var list = D.getState().expenses;
+    setHTML("expenseRows", list.map(function (e) {
+      return "<tr><td>" + esc(e.title) + "</td><td>" + D.fmtDate(e.date) + "</td><td>" + inr(e.amount) + "</td><td><span class='badge " + (e.status === "Paid" ? "paid" : "due") + "'>" + esc(e.status || "Paid") + "</span></td>" +
+        "<td><button class='btn small danger' data-exp='" + e.id + "'>Delete</button></td></tr>";
+    }).join("") || "<tr><td colspan='5' class='muted'>No expenses yet.</td></tr>");
+    setText("expenseTotal", inr(D.expenseTotal()));
+    var rowsEl = $("expenseRows");
+    if (rowsEl) rowsEl.querySelectorAll("[data-exp]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (!confirm("Delete this expense? Ye wapas nahi aayega.")) return;
+        D.deleteExpense(b.getAttribute("data-exp"));
+        renderFees();
+      });
+    });
+  }
+  on("addExpenseBtn", "click", function () {
+    var form = $("expenseForm");
+    if (!form) return;
+    form.hidden = !form.hidden;
+    if (!form.hidden) scrollToEl(form);
+  });
+  on("expenseForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var title = fv(f, "title").trim();
+    var amt = parseInt(fv(f, "amount"), 10);
+    if (!title || !amt || amt <= 0) return;
+    D.addExpense({ title: title, amount: amt, date: fv(f, "date") || D.todayStr(), status: fv(f, "status") || "Paid" });
+    f.reset();
+    if ($("expenseForm")) $("expenseForm").hidden = true;
+    renderFees();
+  });
+
+  /* ---------- Attendance ---------- */
+  function renderAttendance() {
+    var date = $("attDate") ? $("attDate").value : D.todayStr();
+    if (!date) date = D.todayStr();
+    var q = ($("attSearch") ? $("attSearch").value : "").toLowerCase();
+    var saved = D.attendanceFor(date);
+    var list = D.membersList("active").filter(function (m) {
+      return !q || m.name.toLowerCase().indexOf(q) !== -1;
+    });
+    list.forEach(function (m) { if (!attWorking[m.id]) attWorking[m.id] = saved[m.id] || "Present"; });
+    setHTML("attList", list.map(function (m) {
+      return "<div class='att-row'><span class='avatar'>" + esc(initials(m.name)) + "</span><div class='grow'><b>" + esc(m.name) + "</b><div class='muted'>" + esc(m.phone || "") + "</div></div>" +
+        "<span class='seg'><button type='button' data-att='" + m.id + "' data-v='Present' class='" + (attWorking[m.id] === "Present" ? "on-p" : "") + "'>Present</button>" +
+        "<button type='button' data-att='" + m.id + "' data-v='Absent' class='" + (attWorking[m.id] === "Absent" ? "on-a" : "") + "'>Absent</button></span></div>";
+    }).join("") || "<p class='muted'>No members yet — Add Member se shuru karo.</p>");
+    var listEl = $("attList");
+    if (listEl) listEl.querySelectorAll("[data-att]").forEach(function (b) {
+      b.addEventListener("click", function () { attWorking[b.getAttribute("data-att")] = b.getAttribute("data-v"); renderAttendance(); });
+    });
+  }
+  on("attDate", "change", function () { attWorking = {}; renderAttendance(); });
+  on("attSearch", "input", renderAttendance);
+  on("markAllBtn", "click", function () { Object.keys(attWorking).forEach(function (k) { attWorking[k] = "Present"; }); renderAttendance(); });
+  on("saveAttBtn", "click", function () {
+    var date = $("attDate") ? $("attDate").value : D.todayStr();
+    D.saveAttendance(date, attWorking);
+    var total = Object.keys(attWorking).length, p = 0;
+    Object.keys(attWorking).forEach(function (k) { if (attWorking[k] === "Present") p++; });
+    setText("attMsg", "Attendance saved ✓ — " + p + " present / " + total + " members, " + D.fmtDate(date) + ".");
+    renderHome();
+  });
+
+  /* ---------- More: Plans / Trainers / Notices / Settings / Data ---------- */
+  var editingPlanId = null;
+  var editingTrainerId = null;
+  function renderMore() {
+    setHTML("planRows", D.plansList().map(function (p) {
+      return "<div class='list-row'><div class='grow'><div class='t'>" + esc(p.name) + "</div><div class='s'>" + p.days + " days • " + inr(p.price) + "</div></div>" +
+        "<button class='btn small secondary' data-plan-edit='" + p.id + "'>Edit</button> <button class='btn small danger' data-plan-del='" + p.id + "'>Delete</button></div>";
+    }).join("") || "<p class='muted'>No plans yet — pehle ek membership plan banao.</p>");
+    setHTML("trainerRows", D.trainersList().map(function (t) {
+      return "<div class='list-row'><span class='avatar'>" + esc(initials(t.name)) + "</span><div class='grow'><div class='t'>" + esc(t.name) + "</div><div class='s'>" + esc(t.specialty || "") + (t.phone ? " • " + esc(t.phone) : "") + "</div></div>" +
+        "<button class='btn small secondary' data-trainer-edit='" + t.id + "'>Edit</button> <button class='btn small danger' data-trainer-del='" + t.id + "'>Delete</button></div>";
+    }).join("") || "<p class='muted'>No trainers yet.</p>");
+    setHTML("noticeList", D.getState().notices.map(function (n) {
+      return "<div class='card'><div class='list-row'><div class='grow'><div class='t'>" + esc(n.title) + "</div><div>" + esc(n.body) + "</div><div class='s'>" + D.fmtDate(n.date) + (n.tag ? " • " + esc(n.tag) : "") + "</div></div><button class='btn small danger' data-notice-del='" + n.id + "'>Delete</button></div></div>";
+    }).join("") || "<p class='muted'>No notices yet.</p>");
+
+    var pr = $("planRows");
+    if (pr) {
+      pr.querySelectorAll("[data-plan-edit]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var p = null;
+          D.plansList().forEach(function (x) { if (x.id === b.getAttribute("data-plan-edit")) p = x; });
+          if (!p) return;
+          editingPlanId = p.id;
+          var f = $("planForm");
+          f.elements["name"].value = p.name; f.elements["days"].value = p.days; f.elements["price"].value = p.price;
+          setText("planFormTitle", "Edit Plan");
+          if ($("planForm")) scrollToEl($("planForm"));
+        });
+      });
+      pr.querySelectorAll("[data-plan-del]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (!confirm("Delete this plan? Ye wapas nahi aayega.")) return;
+          D.deletePlan(b.getAttribute("data-plan-del"));
+          renderMore();
+        });
+      });
+    }
+    var tr = $("trainerRows");
+    if (tr) {
+      tr.querySelectorAll("[data-trainer-edit]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var t = null;
+          D.trainersList().forEach(function (x) { if (x.id === b.getAttribute("data-trainer-edit")) t = x; });
+          if (!t) return;
+          editingTrainerId = t.id;
+          var f = $("trainerForm");
+          f.elements["name"].value = t.name; f.elements["specialty"].value = t.specialty || ""; f.elements["phone"].value = t.phone || "";
+          if ($("trainerForm")) scrollToEl($("trainerForm"));
+        });
+      });
+      tr.querySelectorAll("[data-trainer-del]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (!confirm("Delete this trainer? Ye wapas nahi aayega.")) return;
+          D.deleteTrainer(b.getAttribute("data-trainer-del"));
+          fillSelects(); renderMore();
+        });
+      });
+    }
+    var nl = $("noticeList");
+    if (nl) nl.querySelectorAll("[data-notice-del]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (!confirm("Delete this notice? Ye wapas nahi aayega.")) return;
+        D.deleteNotice(b.getAttribute("data-notice-del"));
+        renderMore();
+      });
+    });
+    var sf = $("settingsForm");
+    if (sf) {
+      var s = D.settings();
+      sf.elements["gymName"].value = s.gymName;
+      sf.elements["ownerName"].value = s.ownerName || "";
+      sf.elements["city"].value = s.city || "";
+    }
+  }
+  on("planForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var name = fv(f, "name").trim();
+    var days = parseInt(fv(f, "days"), 10);
+    var price = parseInt(fv(f, "price"), 10);
+    if (!name || !days || days <= 0 || !price || price < 0) return;
+    D.savePlan({ id: editingPlanId || undefined, name: name, days: days, price: price });
+    editingPlanId = null;
+    f.reset();
+    setText("planFormTitle", "Add Plan");
+    renderMore();
+  });
+  on("planCancel", "click", function () {
+    editingPlanId = null;
+    var f = $("planForm"); if (f) f.reset();
+    setText("planFormTitle", "Add Plan");
+  });
+  on("trainerForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var name = fv(f, "name").trim();
+    if (!name) return;
+    D.saveTrainer({ id: editingTrainerId || undefined, name: name, specialty: fv(f, "specialty").trim(), phone: fv(f, "phone").trim() });
+    editingTrainerId = null;
+    f.reset();
+    fillSelects(); renderMore();
+  });
+  on("noticeForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var title = fv(f, "title").trim();
+    if (!title) return;
+    D.addNotice({ title: title, tag: fv(f, "tag").trim(), body: fv(f, "body").trim(), date: D.todayStr() });
+    f.reset();
+    renderMore();
+  });
+  on("settingsForm", "submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    D.saveSettings({ gymName: fv(f, "gymName").trim(), ownerName: fv(f, "ownerName").trim(), city: fv(f, "city").trim() });
+    applySettings();
+    setText("settingsMsg", "Settings saved ✓");
+  });
+  on("exportBtn", "click", function () {
+    var blob = new Blob([D.exportJSON()], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "gym-management-app-backup-" + D.todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  on("importFile", "change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var ok = D.importJSON(String(reader.result || ""));
+      setText("importMsg", ok ? "Import ho gaya ✓ — data load ho gaya hai." : "Import fail — sahi backup file chuno.");
+      if (ok) { fillSelects(); applySettings(); renderSection(currentSection); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+  on("resetBtn", "click", function () {
+    if (!confirm("Reset all data? Saara data delete ho jayega — ye wapas nahi aayega.")) return;
+    D.resetAll();
+    fillSelects(); applySettings();
+    if ($("attDate")) $("attDate").value = D.todayStr();
+    attWorking = {};
+    renderSection(currentSection);
+  });
+
+  /* ---------- Init ---------- */
+  fillSelects();
+  applySettings();
+  if ($("attDate")) $("attDate").value = D.todayStr();
+  renderSection("home");
+})();
