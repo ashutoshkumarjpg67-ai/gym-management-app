@@ -28,12 +28,18 @@
     return value;
   }
   function monthOf(dateStr) { return (dateStr || "").slice(0, 7); }
-  /* Months from `from` to `to` (inclusive, "YYYY-MM") — only months the
-     app's FEE_MONTHS list covers, so labels and the month filter work. */
-  function monthsBetween(from, to) {
-    var out = [];
-    FEE_MONTHS.forEach(function (fm) { if (fm.value >= from && fm.value <= to) out.push(fm.value); });
-    return out;
+  /* Add n months to a date, keeping the day-of-month (clamped to the
+     target month's last day, e.g. 31 Jan + 1 = 28 Feb). Always computed
+     from the ORIGINAL date, so 31 Jan + 2 = 31 Mar (no anchor drift). */
+  function addMonthsClamped(iso, n) {
+    var p = (iso || "").split("-");
+    var y = parseInt(p[0], 10) || 1970, m = (parseInt(p[1], 10) || 1) - 1 + n, d = parseInt(p[2], 10) || 1;
+    var ty = y + Math.floor(m / 12), tm = ((m % 12) + 12) % 12;
+    var last = new Date(ty, tm + 1, 0).getDate();
+    var td = Math.min(d, last);
+    var mm = String(tm + 1); if (mm.length < 2) mm = "0" + mm;
+    var dd = String(td); if (dd.length < 2) dd = "0" + dd;
+    return ty + "-" + mm + "-" + dd;
   }
   function todayStr() {
     // IST date, always — server/client timezone mismatch caused off-by-one
@@ -174,10 +180,14 @@
 
     /* ----- Monthly fee model (v1.6.0 — plan system retired) -----
        Simple rule, the way the gym actually works: every member has one
-       monthly fee. From the join month onward, each month's fee is Due
-       until paid. Dues are stored as ordinary Membership fee records, so
+       monthly fee. Fees are anchored on the ADMISSION DATE — a member who
+       joined on 7 Jul owes on 7 Jul, 7 Aug, 7 Sep ... (next month, same
+       date, 1 month complete). A period's fee exists once its start date
+       has arrived, and NEVER for a future month — so a 25 Jul join has
+       Jul/Aug/Sep/Oct dues on 7 Nov, but no November fee yet (25 Nov has
+       not come). Dues are stored as ordinary Membership fee records, so
        totals, defaulters, Collect, receipts and Delete all work unchanged
-       — only the SOURCE of the records changed (auto from join month,
+       — only the SOURCE of the records changed (auto from join date,
        instead of plan assign/renew). */
     migrateMonthlyFees: function () {
       // Members saved before v1.6.0 have no monthlyFee: take it from the
@@ -193,23 +203,35 @@
         }
         m.monthlyFee = parseInt(fee, 10) || 0;
       }, this);
+      // v1.6.1: fees generate only up to the current month. Drop Membership
+      // records for FUTURE months that the old plan system created (a renew
+      // made a next-month fee, e.g. December while it is still November).
+      // A hand-added future fee (no plan name) is the owner's own entry —
+      // that one stays.
+      var cur = monthOf(todayStr());
+      state.fees = state.fees.filter(function (f) {
+        return !(f.type === "Membership" && f.month > cur && f.planName);
+      });
       this.save();
     },
     ensureMonthlyDues: function () {
-      // Idempotent: only creates a Membership record for a month that does
+      // Idempotent: only creates a Membership record for a period that does
       // not have one yet. Runs on login, on member save, and on import.
-      var created = 0, cur = monthOf(todayStr());
+      var created = 0, today = todayStr();
       state.members.forEach(function (m) {
         if (m.status !== "active") return;
         var fee = parseInt(m.monthlyFee, 10) || 0;
         if (fee <= 0) return;
-        var from = monthOf(m.joinDate || todayStr());
-        monthsBetween(from, cur).forEach(function (mo) {
+        var join = m.joinDate || today;
+        for (var n = 0; n <= 120; n++) {
+          var start = addMonthsClamped(join, n);
+          if (start > today) break;
+          var mo = monthOf(start);
           if (!this.feeExists(m.id, mo, "Membership")) {
             this.addFee({ memberId: m.id, type: "Membership", month: mo, amount: fee });
             created++;
           }
-        }, this);
+        }
       }, this);
       return created;
     },

@@ -714,9 +714,11 @@
         } else { D.removeMember(saved.id); return failQuotaSave(); }
       }
     }
-    // Monthly fee save hote hi join month se aaj tak ke saare mahinon ki
-    // Due fee records ban jati hain (data.js ensureMonthlyDues) — isliye
-    // member turant defaulter list mein dikhta hai, bina plan ke.
+    // Monthly fee save hote hi admission date se aaj tak ke saare mahinon
+    // ki Due fee records ban jati hain (data.js ensureMonthlyDues) — har
+    // mahine usi date ko (7 Jul join to 7 Aug, 7 Sep...), current month
+    // tak. Aane wale mahine ki fee nahi banti. Isliye member turant
+    // defaulter list mein dikhta hai, bina plan ke.
     if (photoDropped) setText("memberMsg", "⚠️ Storage is almost full — member saved without photo. Take a backup from More → Data → Export, then delete old data to add the photo again.");
     else if (saved && saved.monthlyFee) {
       var duesN = D.feesFor("All", "All").filter(function (x) { return x.memberId === (id || saved.id) && x.type === "Membership"; }).length;
